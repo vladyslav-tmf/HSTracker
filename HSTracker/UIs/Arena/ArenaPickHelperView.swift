@@ -206,7 +206,6 @@ extension ArenaPickHelperViewModel {
     }
 }
 
-
 /// HDT's `BoostGeo` - a chevron-tailed plaque, blue pointing left and orange
 /// pointing right.
 @available(macOS 10.15, *)

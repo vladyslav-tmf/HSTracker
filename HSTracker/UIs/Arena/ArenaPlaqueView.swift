@@ -89,23 +89,30 @@ struct ArenaPlaqueView: View {
     }
 
     private var flames: some View {
-        // The flame art is a soft radial glow in the plate's accent colour; the
-        // per-flame angle/scale wobble comes from the seeded generator.
-        ZStack {
+        // Soft licks of the plate's accent colour rising from the bottom edge, in
+        // place of HDT's flame bitmaps. The gradient has to reach zero well inside
+        // the ellipse: at full width three overlapping glows saturate the whole
+        // plate and the clip below then reads as a hard-edged rectangle instead of
+        // as flames.
+        ZStack(alignment: .bottom) {
+            Color.clear
             ForEach(Array(viewModel.innerFlames.enumerated()), id: \.offset) { index, flame in
                 Ellipse()
                     .fill(
-                        RadialGradient(gradient: Gradient(colors: [viewModel.glowColor.opacity(0.55),
-                                                                   viewModel.glowColor.opacity(0)]),
-                                       center: .center, startRadius: 0, endRadius: 26)
+                        RadialGradient(gradient: Gradient(stops: [
+                            .init(color: viewModel.glowColor.opacity(0.5), location: 0),
+                            .init(color: viewModel.glowColor.opacity(0.18), location: 0.45),
+                            .init(color: viewModel.glowColor.opacity(0), location: 1)
+                        ]), center: .center, startRadius: 0, endRadius: 17)
                     )
-                    .frame(width: 44, height: 34)
+                    .frame(width: 34, height: 30)
                     .scaleEffect(x: CGFloat(flame.scaleX), y: CGFloat(flame.scaleY))
                     .rotationEffect(.degrees(flame.angle))
-                    .offset(x: CGFloat(index - 1) * 22, y: 6)
+                    .offset(x: CGFloat(index - 1) * 24, y: 9)
             }
         }
-        .opacity(0.6)
+        .compositingGroup()
+        .opacity(0.75)
         // XAML clips the flame canvas to Rect 2,2,86,54 with a 3pt radius.
         .clipShape(RoundedRectangle(cornerRadius: 3).inset(by: 2))
         .allowsHitTesting(false)

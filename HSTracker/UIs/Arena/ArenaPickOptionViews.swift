@@ -176,7 +176,6 @@ struct ArenaPickSingleHeroOptionView: View {
     }
 }
 
-
 // MARK: - glyphs
 
 /// The "has related cards" mark: HDT draws a card outline (its `CardIcon`
