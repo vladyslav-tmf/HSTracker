@@ -138,6 +138,17 @@ struct RootOverlayView: View {
                     }
                     .frame(width: canvasWidth, height: 1080)
 
+                    // HDT's _arenaPreLobbyBehavior puts this at
+                    // GetScaledXPos(0.034) / Height * 0.046 - 3.4% in from the
+                    // left edge of the 4:3 inner area, 4.6% down.
+                    ZStack(alignment: .topLeading) {
+                        Color.clear
+                        ArenaPreDraftView(viewModel: viewModel.arenaPreDraft)
+                            .padding(.leading, 0.034 * 1440)
+                            .padding(.top, 0.046 * 1080)
+                    }
+                    .frame(width: canvasWidth, height: 1080)
+
                     // Last, so it draws over the top bar - BattlegroundsInspiration
                     // comes after BgsTopBar on OverlayWindow's canvas too.
                     //

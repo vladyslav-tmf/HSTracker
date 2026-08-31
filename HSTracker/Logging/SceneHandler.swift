@@ -67,6 +67,15 @@ class SceneHandler {
         } else if from == .draft {
             Watchers.arenaWatcher.stop()
             Watchers.arenaStateWatcher.stop()
+            DispatchQueue.main.async {
+                if #available(macOS 10.15, *) {
+                    // HDT does the same from _arenaOverlayBehavior and
+                    // _arenaPreLobbyBehavior's HideCallbacks.
+                    let overlay = game.windowManager.rootOverlay?.viewModel
+                    overlay?.arenaPickHelper.reset()
+                    overlay?.arenaPreDraft.reset()
+                }
+            }
         } else if from == .gameplay {
             game.updateBattlegroundsSessionVisibility()
             Watchers.battlegroundsTeammateBoardStateWatcher.stop()
@@ -118,6 +127,14 @@ class SceneHandler {
         
         if from == .bacon {
             game.windowManager.tier7PreLobby.viewModel.invalidateUserState()
+        }
+
+        if to == .draft, #available(macOS 10.15, *) {
+            let preDraft = game.windowManager.rootOverlay?.viewModel.arenaPreDraft
+            DispatchQueue.main.async {
+                preDraft?.invalidateUserState()
+            }
+            Task { await preDraft?.update() }
         }
     }
 }

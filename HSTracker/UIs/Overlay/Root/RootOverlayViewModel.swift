@@ -33,6 +33,7 @@ class RootOverlayViewModel: ObservableObject {
     let battlegroundsInspiration = BattlegroundsInspirationViewModel()
     let battlegroundsMinionPinning = BattlegroundsMinionPinningViewModel()
     let arenaPickHelper = ArenaPickHelperViewModel()
+    let arenaPreDraft = ArenaPreDraftViewModel()
 
     init() {
         // HDT wires the same reference in OverlayWindow's constructor
