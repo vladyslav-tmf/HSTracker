@@ -1700,6 +1700,9 @@
 		B8B790742C98754100DD33EC /* ActiveEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790732C98754100DD33EC /* ActiveEffects.swift */; };
 		B8B790772C98764000DD33EC /* DynamicFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790762C98764000DD33EC /* DynamicFactory.swift */; };
 		B8B790792C98A70800DD33EC /* EffectFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790782C98A70800DD33EC /* EffectFactory.swift */; };
+		B8AA20022FC2000100AA2002 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
+		B8AA20032FC2000100AA2003 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
+		B8AA20072FC2000100AA2007 /* ArenaPreferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8AA20062FC2000100AA2006 /* ArenaPreferences.xib */; };
 		B8B7CC1F253C721400033758 /* BattlegroundsPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B7CC1E253C721400033758 /* BattlegroundsPreferences.swift */; };
 		B8B7CC20253C74D100033758 /* BattlegroundsPreferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8B7CC22253C74D100033758 /* BattlegroundsPreferences.xib */; };
 		B8BA17D728E91C52004D40ED /* LinkOpponentDeckPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8BA17D628E91C52004D40ED /* LinkOpponentDeckPanel.swift */; };
@@ -3680,6 +3683,9 @@
 		B8B790732C98754100DD33EC /* ActiveEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveEffects.swift; sourceTree = "<group>"; };
 		B8B790762C98764000DD33EC /* DynamicFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicFactory.swift; sourceTree = "<group>"; };
 		B8B790782C98A70800DD33EC /* EffectFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectFactory.swift; sourceTree = "<group>"; };
+		B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArenaPreferences.swift; sourceTree = "<group>"; };
+		B8AA20042FC2000100AA2004 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ArenaPreferences.xib; sourceTree = "<group>"; };
+		B8AA20052FC2000100AA2005 /* mul */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = mul; path = mul.lproj/ArenaPreferences.xcstrings; sourceTree = "<group>"; };
 		B8B7CC1E253C721400033758 /* BattlegroundsPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattlegroundsPreferences.swift; sourceTree = "<group>"; };
 		B8B7CC21253C74D100033758 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/BattlegroundsPreferences.xib; sourceTree = "<group>"; };
 		B8BA17D628E91C52004D40ED /* LinkOpponentDeckPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkOpponentDeckPanel.swift; sourceTree = "<group>"; };
@@ -4257,6 +4263,8 @@
 			isa = PBXGroup;
 			children = (
 				7BA4A8152FF3EA91000B3784 /* PreferencePaneController.swift */,
+				B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */,
+				B8AA20062FC2000100AA2006 /* ArenaPreferences.xib */,
 				B8B7CC1E253C721400033758 /* BattlegroundsPreferences.swift */,
 				B8B7CC22253C74D100033758 /* BattlegroundsPreferences.xib */,
 				43D308051C842DC900480488 /* GamePreferences.swift */,
@@ -7001,6 +7009,7 @@
 				432B5FB91CB5372C00B05D19 /* GeneralPreferences.xib in Resources */,
 				43050C621E6B484D007600EA /* Hearthstone.xcassets in Resources */,
 				B8BD3BB02C435CA7001E85B7 /* BattlegroundsCompositionStatsRow.xib in Resources */,
+				B8AA20072FC2000100AA2007 /* ArenaPreferences.xib in Resources */,
 				B8B7CC20253C74D100033758 /* BattlegroundsPreferences.xib in Resources */,
 				B85A0D55272CE24A006D2648 /* MercenariesPreferences.xib in Resources */,
 				B8AF0C6F2B8433DE00B65F63 /* ConstructedMulliganGuide.xib in Resources */,
@@ -8559,6 +8568,7 @@
 				B86D89FA2D95F1D900AB65A5 /* SpiritGatherer.swift in Sources */,
 				432AD95B1DAD46FF00D8F959 /* Http.swift in Sources */,
 				B89BCE0A2FF4768B0095F011 /* CapturedArchmageCounter.swift in Sources */,
+				B8AA20022FC2000100AA2002 /* ArenaPreferences.swift in Sources */,
 				B8B7CC1F253C721400033758 /* BattlegroundsPreferences.swift in Sources */,
 				B89343422CD0791C009A8727 /* GalakrondCounter.swift in Sources */,
 				43C568011D5E584F00451B6F /* LogUploader.swift in Sources */,
@@ -9078,6 +9088,7 @@
 				B8DEDCE22547C65700DF524B /* FillImageView.swift in Sources */,
 				B8DEDCE12547C64300DF524B /* BgHeroesToastView.swift in Sources */,
 				B8DEDCDF2547C61B00DF524B /* MinionHeroPowerTrigger.swift in Sources */,
+				B8AA20032FC2000100AA2003 /* ArenaPreferences.swift in Sources */,
 				B8DEDCDD2547C5D100DF524B /* BattlegroundsPreferences.swift in Sources */,
 				B8DEDCDC2547C5C800DF524B /* StatusMessageConverter.swift in Sources */,
 				B8DEDCDB2547C5C200DF524B /* MinionFactoryProxy.swift in Sources */,
@@ -9461,6 +9472,15 @@
 				B89BCF4A300851D10095F011 /* mul */,
 			);
 			name = ImportingPreferences.xib;
+			sourceTree = "<group>";
+		};
+		B8AA20062FC2000100AA2006 /* ArenaPreferences.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B8AA20042FC2000100AA2004 /* Base */,
+				B8AA20052FC2000100AA2005 /* mul */,
+			);
+			name = ArenaPreferences.xib;
 			sourceTree = "<group>";
 		};
 		B8B7CC22253C74D100033758 /* BattlegroundsPreferences.xib */ = {

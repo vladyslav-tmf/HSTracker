@@ -50,6 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
             PlayerTrackersPreferences(nibName: "PlayerTrackersPreferences", bundle: nil),
             OpponentTrackersPreferences(nibName: "OpponentTrackersPreferences", bundle: nil),
             BattlegroundsPreferences(nibName: "BattlegroundsPreferences", bundle: nil),
+            ArenaPreferences(nibName: "ArenaPreferences", bundle: nil),
             MercenariesPreferences(nibName: "MercenariesPreferences", bundle: nil),
             ImportingPreferences(nibName: "ImportingPreferences", bundle: nil)
         ]

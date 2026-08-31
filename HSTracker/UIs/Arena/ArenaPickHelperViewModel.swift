@@ -641,6 +641,13 @@ final class ArenaPickHelperViewModel: ObservableObject {
 
     // MARK: reset
 
+    /// The visibility properties above read `Settings` directly rather than
+    /// mirroring it into @Published state, so nothing tells SwiftUI to re-read
+    /// them when a preference changes. The preferences pane calls this.
+    func settingsChanged() {
+        objectWillChange.send()
+    }
+
     func reset(keepGameState: Bool = false) {
         heroStats = nil
         heroPowerStats = nil

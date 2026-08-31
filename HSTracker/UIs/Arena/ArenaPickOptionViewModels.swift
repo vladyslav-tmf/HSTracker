@@ -55,6 +55,9 @@ final class ArenaPickSingleCardOptionViewModel: ObservableObject {
          data: ArenaCardPickApiResponse.CardStatsEntry,
          pickedDeck: [String]?,
          isUnderground: Bool,
+         // Retained for parity with HDT's constructor even though nothing reads
+         // it here: HDT uses it to tag a missing-score telemetry event, which
+         // this port deliberately does not send.
          apiError: Bool = false) {
         self.cardId = cardId
         self.card = Cards.by(cardId: cardId)
@@ -76,11 +79,6 @@ final class ArenaPickSingleCardOptionViewModel: ObservableObject {
         self.plaqueViewModel = ArenaPlaqueViewModel(score: score, level: level,
                                                     randomSeed: cardId.hashValue,
                                                     isUnderground: isUnderground)
-
-        if score == "-" {
-            Influx.sendSingleEvent(eventName: "arenasmith_missing_score",
-                                   withProperties: ["api_error": "\(apiError)", "card_id": cardId])
-        }
     }
 
     /// "8.0" reads as "8", but "8.5" keeps its decimal; a score of 10 or more drops

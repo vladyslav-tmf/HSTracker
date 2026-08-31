@@ -189,6 +189,12 @@ final class ArenaPreDraftViewModel: ObservableObject {
         objectWillChange.send()
     }
 
+    /// `isShown` reads `Settings.showArenasmithPreLobby` directly, so the
+    /// preferences pane has to nudge SwiftUI to re-read it.
+    func settingsChanged() {
+        objectWillChange.send()
+    }
+
     func reset() {
         ArenasmithStatusManager.instance.clear()
         availabilities = nil
