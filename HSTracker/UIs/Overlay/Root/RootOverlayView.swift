@@ -127,6 +127,17 @@ struct RootOverlayView: View {
                     BattlegroundsMinionPinningShopView(viewModel: viewModel.battlegroundsMinionPinning,
                                                        canvasWidth: canvasWidth)
 
+                    // HDT places ArenaPickHelper with GetLeft = GetScaledXPos(0)
+                    // and GetTop = 0, scaled by Height/1080 - i.e. pinned to the
+                    // top-left of the 4:3 inner area, which is exactly this
+                    // canvas's own origin. It is authored at HDT's 1440x1080
+                    // reference, so it needs no sizing of its own here.
+                    ZStack(alignment: .topLeading) {
+                        Color.clear
+                        ArenaPickHelperView(viewModel: viewModel.arenaPickHelper)
+                    }
+                    .frame(width: canvasWidth, height: 1080)
+
                     // Last, so it draws over the top bar - BattlegroundsInspiration
                     // comes after BgsTopBar on OverlayWindow's canvas too.
                     //
