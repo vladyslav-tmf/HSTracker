@@ -55,14 +55,6 @@ final class ArenaWatcher {
     public var onCardPicked: ((ArenaWatcher, CardPickedEventArgs) -> Void)?
     public var onRedraftCardPicked: ((ArenaWatcher, RedraftCardPickedEventArgs) -> Void)?
 
-    /// Card id of the hero power the player has drafted, in dual-class Arena.
-    ///
-    /// HDT reads this off `arenaInfo.Deck.HeroPower`, but the macOS mirror's `Deck`
-    /// has no `heroPower` field. `ArenaStateWatcher` reads the same underlying
-    /// memory (`draftDeck.HeroPowerCardID`) for the overlay, so `Watchers` feeds its
-    /// value in here rather than the two watchers reading it twice.
-    public var chosenHeroPower: String = ""
-
     init(delay: TimeInterval = 0.500) {
         self.delay = delay
     }
@@ -176,7 +168,7 @@ final class ArenaWatcher {
 
         // In dual-class Arena the player picks a hero power before the hero, so the
         // deck carries a hero power while the hero is still unset.
-        _isDualClass = _isDualClass || (!chosenHeroPower.isEmpty && arenaInfo.deck.hero.isEmpty)
+        _isDualClass = _isDualClass || (!arenaInfo.deck.heroPower.isEmpty && arenaInfo.deck.hero.isEmpty)
 
         // we need to check _prevIsUnderground == arenaInfo.IsUnderground
         // otherwise changing arena mode would trigger Hero/CardPicked
@@ -245,8 +237,7 @@ final class ArenaWatcher {
         // No choice matched the deck's hero, so this was the hero-power half of a
         // dual-class draft.
         _isDualClass = true
-        if !chosenHeroPower.isEmpty,
-           let heroPower = prevChoices.first(where: { $0.cardId == chosenHeroPower }) {
+        if let heroPower = prevChoices.first(where: { $0.cardId == arenaInfo.deck.heroPower }) {
             onCardPicked?(self, CardPickedEventArgs(picked: ArenaPickedCard(mirror: heroPower),
                                                     choices: prevChoices,
                                                     deck: arenaInfo.deck,

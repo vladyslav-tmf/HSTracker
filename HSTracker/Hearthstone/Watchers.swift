@@ -33,13 +33,6 @@ class Watchers {
         arenaWatcher.onCardPicked = onArenaCardPicked
         arenaWatcher.onRedraftChoicesChanged = onArenaRedraftChoicesChanged
         arenaWatcher.onRedraftCardPicked = onArenaRedraftCardPicked
-        // ArenaWatcher needs the drafted hero power to spot a dual-class draft, and
-        // the macOS mirror's Deck has no heroPower field. ArenaStateWatcher already
-        // reads the same value out of the draft deck, so hand it over rather than
-        // reading it a second time.
-        arenaStateWatcher.onHeroPowerPicked.subscribe { heroPower in
-            arenaWatcher.chosenHeroPower = heroPower
-        }
         baconWatcher.change = onBaconChange
         battlegroundsLeaderboardWatcher.change = { _, args in
             let game = AppDelegate.instance().coreManager.game
@@ -184,6 +177,21 @@ class Watchers {
                                          args.pickedPackage?.map { $0.cardId },
                                          structurePackages(info.choices, info.packages),
                                          isOverlayEnabled: Settings.enableArenasmithOverlay && Settings.showArenasmithScore)
+
+        // A dual-class draft spends an extra slot on the hero power, so its last
+        // card lands on slot 31 rather than 30. Once it is picked there is nothing
+        // left to advise on, and the overlay comes down.
+        let heroPower = args.deck.heroPower
+        let isDualClass = !heroPower.isEmpty
+            && Cards.by(cardId: heroPower)?.playerClass != Cards.by(cardId: args.deck.hero)?.playerClass
+        if args.slot == (isDualClass ? 31 : 30) {
+            DispatchQueue.main.async {
+                if #available(macOS 10.15, *) {
+                    AppDelegate.instance().coreManager.game.windowManager
+                        .rootOverlay?.viewModel.arenaPickHelper.reset()
+                }
+            }
+        }
     }
 
     private static func onArenaRedraftCardPicked(_ sender: ArenaWatcher, _ args: RedraftCardPickedEventArgs) {
