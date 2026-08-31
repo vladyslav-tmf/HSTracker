@@ -1553,6 +1553,9 @@
 		B8A9CB2F25699B70000071FC /* RemoteConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8820CCF25603FB00072ECBC /* RemoteConfig.swift */; };
 		B8A9CB332571F160000071FC /* GuessedCardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A9CB322571F160000071FC /* GuessedCardState.swift */; };
 		B8A9CB3C2573FD61000071FC /* GuessedCardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A9CB322571F160000071FC /* GuessedCardState.swift */; };
+		B8AA20022FC2000100AA2002 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
+		B8AA20032FC2000100AA2003 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
+		B8AA20072FC2000100AA2007 /* ArenaPreferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8AA20062FC2000100AA2006 /* ArenaPreferences.xib */; };
 		B8AB59942742F94900383EC8 /* RateLimiter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AB59932742F94900383EC8 /* RateLimiter.swift */; };
 		B8AB59962742FA5C00383EC8 /* Deque.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AB59952742FA5C00383EC8 /* Deque.swift */; };
 		B8AB59982744139700383EC8 /* CollectionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AB59972744139700383EC8 /* CollectionHelper.swift */; };
@@ -1700,9 +1703,6 @@
 		B8B790742C98754100DD33EC /* ActiveEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790732C98754100DD33EC /* ActiveEffects.swift */; };
 		B8B790772C98764000DD33EC /* DynamicFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790762C98764000DD33EC /* DynamicFactory.swift */; };
 		B8B790792C98A70800DD33EC /* EffectFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B790782C98A70800DD33EC /* EffectFactory.swift */; };
-		B8AA20022FC2000100AA2002 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
-		B8AA20032FC2000100AA2003 /* ArenaPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */; };
-		B8AA20072FC2000100AA2007 /* ArenaPreferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8AA20062FC2000100AA2006 /* ArenaPreferences.xib */; };
 		B8B7CC1F253C721400033758 /* BattlegroundsPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B7CC1E253C721400033758 /* BattlegroundsPreferences.swift */; };
 		B8B7CC20253C74D100033758 /* BattlegroundsPreferences.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8B7CC22253C74D100033758 /* BattlegroundsPreferences.xib */; };
 		B8BA17D728E91C52004D40ED /* LinkOpponentDeckPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8BA17D628E91C52004D40ED /* LinkOpponentDeckPanel.swift */; };
@@ -3536,6 +3536,9 @@
 		B8A70C142841494D004D054C /* BattlegroundsTierTriples.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = BattlegroundsTierTriples.xib; sourceTree = "<group>"; };
 		B8A70C16284152DC004D054C /* BattlegroundsTierTriples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattlegroundsTierTriples.swift; sourceTree = "<group>"; };
 		B8A9CB322571F160000071FC /* GuessedCardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessedCardState.swift; sourceTree = "<group>"; };
+		B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArenaPreferences.swift; sourceTree = "<group>"; };
+		B8AA20042FC2000100AA2004 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ArenaPreferences.xib; sourceTree = "<group>"; };
+		B8AA20052FC2000100AA2005 /* mul */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = mul; path = mul.lproj/ArenaPreferences.xcstrings; sourceTree = "<group>"; };
 		B8AB59932742F94900383EC8 /* RateLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateLimiter.swift; sourceTree = "<group>"; };
 		B8AB59952742FA5C00383EC8 /* Deque.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deque.swift; sourceTree = "<group>"; };
 		B8AB59972744139700383EC8 /* CollectionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionHelper.swift; sourceTree = "<group>"; };
@@ -3683,9 +3686,6 @@
 		B8B790732C98754100DD33EC /* ActiveEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveEffects.swift; sourceTree = "<group>"; };
 		B8B790762C98764000DD33EC /* DynamicFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicFactory.swift; sourceTree = "<group>"; };
 		B8B790782C98A70800DD33EC /* EffectFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectFactory.swift; sourceTree = "<group>"; };
-		B8AA20012FC2000100AA2001 /* ArenaPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArenaPreferences.swift; sourceTree = "<group>"; };
-		B8AA20042FC2000100AA2004 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ArenaPreferences.xib; sourceTree = "<group>"; };
-		B8AA20052FC2000100AA2005 /* mul */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; name = mul; path = mul.lproj/ArenaPreferences.xcstrings; sourceTree = "<group>"; };
 		B8B7CC1E253C721400033758 /* BattlegroundsPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattlegroundsPreferences.swift; sourceTree = "<group>"; };
 		B8B7CC21253C74D100033758 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/BattlegroundsPreferences.xib; sourceTree = "<group>"; };
 		B8BA17D628E91C52004D40ED /* LinkOpponentDeckPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkOpponentDeckPanel.swift; sourceTree = "<group>"; };

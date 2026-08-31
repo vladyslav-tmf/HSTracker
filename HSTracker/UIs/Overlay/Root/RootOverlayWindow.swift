@@ -86,6 +86,7 @@ class RootOverlayWindow: OverWindowController {
         let viewPoint = hostingView.convert(windowPoint, from: nil)
 
         updateFilterRegionHover(at: viewPoint)
+        updateArenaPanelHover(at: viewPoint)
 
         guard !viewModel.interactiveRegions.isEmpty else {
             setIgnoresMouseEvents(true)
@@ -116,6 +117,19 @@ class RootOverlayWindow: OverWindowController {
         withAnimation(.easeOut(duration: hovering ? 0.2 : 0.4)) {
             minions.isFilterRegionHovered = hovering
         }
+    }
+
+    // The Arena bottom panel opens on the *in-game* hover (the mirror reports
+    // which choice the player's cursor is over), then stays up while the pointer
+    // is on the panel itself so it can be read and scrolled. Tracked here rather
+    // than with .onHover for the same reason as the filter region above: the
+    // panel stays click-through, so .onHover would never fire.
+    private func updateArenaPanelHover(at viewPoint: NSPoint) {
+        guard #available(macOS 10.15, *) else { return }
+        let hovering = viewModel.arenaBottomPanelFrame?.contains(viewPoint) ?? false
+        let pickHelper = viewModel.arenaPickHelper
+        guard pickHelper.hoveringPanel != hovering else { return }
+        pickHelper.hoveringPanel = hovering
     }
 
     private func setIgnoresMouseEvents(_ ignores: Bool) {

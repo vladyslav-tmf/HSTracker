@@ -87,6 +87,14 @@ final class ArenaPickHelperViewModel: ObservableObject {
     @Published private(set) var isHeroZoomed = false
     @Published private(set) var isPackageSelectOpen = false
     @Published private(set) var hoveredChoice: ArenaDraftChoice?
+    /// Cursor is over the bottom panel. Set by RootOverlayWindow, which tracks
+    /// the pointer even while the overlay is click-through.
+    @Published var hoveringPanel = false {
+        didSet {
+            guard hoveringPanel != oldValue else { return }
+            updateTileViewModels()
+        }
+    }
     @Published private(set) var scrollOffset: CGFloat = 0
     @Published private(set) var redraftScrollOffset: CGFloat = 0
 
@@ -129,10 +137,19 @@ final class ArenaPickHelperViewModel: ObservableObject {
 
     var showMessages: Bool { !(messages?.isEmpty ?? true) }
 
+    var hasBottomPanelCards: Bool { !bottomPanelCards.isEmpty }
+
+    /// The messages column eats 280pt, so the card grid gets fewer columns when
+    /// one is present.
+    var bottomPanelColumnCount: Int { showMessages ? 4 : 6 }
+
     var showBottom: Bool {
         if isPackageSelectOpen || isAnimating || isHeroZoomed { return false }
-        if hoveredChoice == nil && lastHoveredChoice == nil { return false }
-        return Settings.showArenaRelatedCards && (!bottomPanelCards.isEmpty || showMessages)
+        // The in-game hover is what opens the panel. Once it ends the panel stays
+        // only while the cursor is actually on it, so moving over to scroll the
+        // card list doesn't dismiss it.
+        if hoveredChoice == nil && (lastHoveredChoice == nil || !hoveringPanel) { return false }
+        return Settings.showArenaRelatedCards && (hasBottomPanelCards || showMessages)
     }
 
     // MARK: wiring
@@ -225,7 +242,10 @@ final class ArenaPickHelperViewModel: ObservableObject {
 
     /// Recomputes which drafted cards light up for the currently hovered choice.
     private func updateTileViewModels() {
-        let choice = hoveredChoice ?? lastHoveredChoice
+        // Falling back to the last hovered choice keeps the deck highlighting up
+        // while the cursor is on the panel; without that guard the highlights
+        // would persist after the player stops hovering anything.
+        let choice = hoveredChoice ?? (hoveringPanel ? lastHoveredChoice : nil)
         let activeCard = choice.flatMap { cardStats?[safeIndex: $0.index] }?.cardStats
 
         let enhancedBy = activeCard?.related_cards?.enhanced_by_card_ids?.all ?? []

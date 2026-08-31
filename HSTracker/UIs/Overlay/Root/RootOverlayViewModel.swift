@@ -61,4 +61,9 @@ class RootOverlayViewModel: ObservableObject {
     // ignoresMouseEvents - SwiftUI's own .onHover can't do this job, since it
     // only fires once the window has already stopped being click-through.
     @Published var hoverRegion: CGRect?
+
+    // Frame of the Arena bottom panel, tracked separately from hoverRegion above:
+    // that one is wired straight to the Battlegrounds filter button, and the two
+    // are driven by different children with different consumers.
+    @Published var arenaBottomPanelFrame: CGRect?
 }

@@ -15,6 +15,8 @@ import SwiftUI
 @available(macOS 10.15, *)
 struct ArenaPickHelperView: View {
     @ObservedObject var viewModel: ArenaPickHelperViewModel
+    /// Reported upward so the window can match the cursor against it.
+    @Binding var bottomPanelFrame: CGRect?
 
     // HDT's outer grid: 3.25* for the pick area, 1* for the deck rail.
     private static let referenceWidth: CGFloat = 1440
@@ -28,8 +30,13 @@ struct ArenaPickHelperView: View {
         ZStack(alignment: .topLeading) {
             if viewModel.isVisible {
                 HStack(spacing: 0) {
-                    optionsArea
-                        .frame(width: optionsWidth)
+                    ZStack {
+                        optionsArea
+                        // HDT puts the bottom panel in the same column as the
+                        // options, inset 60pt either side and 99pt up.
+                        ArenaBottomPanelView(viewModel: viewModel)
+                    }
+                    .frame(width: optionsWidth)
                     deckRail
                         .frame(width: railWidth)
                 }
@@ -39,7 +46,13 @@ struct ArenaPickHelperView: View {
         }
         .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
         .animation(.easeOut(duration: 0.3), value: viewModel.isVisible)
+        // Nothing in the pick helper takes clicks; the bottom panel only needs to
+        // know when the pointer is over it, which RootOverlayWindow reports
+        // without giving up click-through.
         .allowsHitTesting(false)
+        .onPreferenceChange(ArenaBottomPanelHoverKey.self) { rect in
+            bottomPanelFrame = rect
+        }
     }
 
     /// HDT drives this with four storyboards keyed off `StateChange`; entering the

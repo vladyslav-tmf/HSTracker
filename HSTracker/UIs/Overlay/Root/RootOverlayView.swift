@@ -134,7 +134,8 @@ struct RootOverlayView: View {
                     // reference, so it needs no sizing of its own here.
                     ZStack(alignment: .topLeading) {
                         Color.clear
-                        ArenaPickHelperView(viewModel: viewModel.arenaPickHelper)
+                        ArenaPickHelperView(viewModel: viewModel.arenaPickHelper,
+                                            bottomPanelFrame: $viewModel.arenaBottomPanelFrame)
                     }
                     .frame(width: canvasWidth, height: 1080)
 
