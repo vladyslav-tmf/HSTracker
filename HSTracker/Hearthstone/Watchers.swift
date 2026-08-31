@@ -10,6 +10,7 @@ import Foundation
 
 class Watchers {
     static let arenaWatcher = ArenaWatcher()
+    static let arenaStateWatcher = ArenaStateWatcher()
     static let baconWatcher = BaconWatcher()
     static let battlegroundsLeaderboardWatcher = BattlegroundsLeaderboardWatcher()
     static let battlegroundsLobbyInfoWatcher = BattlegroundsLobbyInfoWatcher()
@@ -28,6 +29,17 @@ class Watchers {
     
     static func initialize() {
         arenaWatcher.onCompleteDeck = onDeckCompleted
+        arenaWatcher.onChoicesChanged = onArenaChoicesChanged
+        arenaWatcher.onCardPicked = onArenaCardPicked
+        arenaWatcher.onRedraftChoicesChanged = onArenaRedraftChoicesChanged
+        arenaWatcher.onRedraftCardPicked = onArenaRedraftCardPicked
+        // ArenaWatcher needs the drafted hero power to spot a dual-class draft, and
+        // the macOS mirror's Deck has no heroPower field. ArenaStateWatcher already
+        // reads the same value out of the draft deck, so hand it over rather than
+        // reading it a second time.
+        arenaStateWatcher.onHeroPowerPicked.subscribe { heroPower in
+            arenaWatcher.chosenHeroPower = heroPower
+        }
         baconWatcher.change = onBaconChange
         battlegroundsLeaderboardWatcher.change = { _, args in
             let game = AppDelegate.instance().coreManager.game
@@ -71,6 +83,7 @@ class Watchers {
     
     static func stop() {
         arenaWatcher.stop()
+        arenaStateWatcher.stop()
         baconWatcher.stop()
         battlegroundsLeaderboardWatcher.stop()
         battlegroundsLobbyInfoWatcher.stop()
@@ -92,7 +105,116 @@ class Watchers {
         if let deck = RealmHelper.autoImportArena(args.info) {
             AppDelegate.instance().coreManager.game.set(activeDeck: deck, autoDetected: true)
         }
-        // TODO: _currentArenaDraftInfo.remove(args.info.deck.id)
+        currentArenaDraftInfo.removeValue(forKey: args.info.deck.id.int64Value)
+    }
+
+    // Choices offered at each slot, plus when they went up, so a pick can be
+    // recorded with the choices it was made from and how long it took.
+    private struct ArenaSlotInfo {
+        let choices: [String]
+        let packages: [[String]]?
+        let pickStartTime: Date
+    }
+    private static var currentArenaDraftInfo = [Int64: [Int: ArenaSlotInfo]]()
+
+    private static func onArenaChoicesChanged(_ sender: ArenaWatcher, _ args: ChoicesChangedEventArgs) {
+        let deckId = args.deck.id.int64Value
+        let info = ArenaSlotInfo(choices: args.choices.map { $0.cardId },
+                                 packages: args.packages?.map { $0.map { c in c.cardId } },
+                                 pickStartTime: Date())
+        currentArenaDraftInfo[deckId, default: [:]][args.slot] = info
+    }
+
+    private static func onArenaRedraftChoicesChanged(_ sender: ArenaWatcher, _ args: RedraftChoicesChangedEventArgs) {
+        let deckId = args.redraftDeck.id.int64Value
+        let info = ArenaSlotInfo(choices: args.choices.map { $0.cardId },
+                                 packages: nil,
+                                 pickStartTime: Date())
+        currentArenaDraftInfo[deckId, default: [:]][args.slot] = info
+    }
+
+    /// A package pick consumes several slots at once, so when the exact slot has no
+    /// recorded choices HDT falls back to `slot - packageSize`.
+    private static func arenaSlotInfo(deckId: Int64, slot: Int, packageSize: Int) -> ArenaSlotInfo? {
+        guard let draftInfo = currentArenaDraftInfo[deckId] else { return nil }
+        if let info = draftInfo[slot], !info.choices.isEmpty {
+            return info
+        }
+        if packageSize > 0, let info = draftInfo[slot - packageSize], !info.choices.isEmpty {
+            return info
+        }
+        return nil
+    }
+
+    private static func structurePackages(_ choices: [String], _ packages: [[String]]?) -> [String: [String]]? {
+        guard let packages, !packages.isEmpty else { return nil }
+        var result = [String: [String]]()
+        for (index, choice) in choices.enumerated() {
+            if index >= packages.count { break }
+            result[choice] = packages[index]
+        }
+        return result
+    }
+
+    private static func onArenaCardPicked(_ sender: ArenaWatcher, _ args: CardPickedEventArgs) {
+        let deckId = args.deck.id.int64Value
+        let packageSize = args.pickedPackage?.count ?? 0
+        guard let info = arenaSlotInfo(deckId: deckId, slot: args.slot, packageSize: packageSize) else {
+            return
+        }
+
+        // The deck already contains the card just picked, so drop one copy of it to
+        // get the deck as it was when the choice was offered.
+        let pickedCards = args.deck.cards.flatMap { card -> [String] in
+            let count = card.cardId == args.picked.cardId
+                ? max(0, card.count.intValue - 1)
+                : card.count.intValue
+            return Array(repeating: card.cardId, count: count)
+        }
+
+        ArenaLastDrafts.instance.addPick(info.pickStartTime,
+                                         Date(),
+                                         args.picked.cardId,
+                                         info.choices,
+                                         args.slot,
+                                         false,
+                                         pickedCards,
+                                         deckId,
+                                         args.isUnderground,
+                                         args.pickedPackage?.map { $0.cardId },
+                                         structurePackages(info.choices, info.packages),
+                                         isOverlayEnabled: Settings.enableArenasmithOverlay && Settings.showArenasmithScore)
+    }
+
+    private static func onArenaRedraftCardPicked(_ sender: ArenaWatcher, _ args: RedraftCardPickedEventArgs) {
+        let redraftDeckId = args.redraftDeck.id.int64Value
+        guard let info = arenaSlotInfo(deckId: redraftDeckId, slot: args.slot, packageSize: 0) else {
+            return
+        }
+
+        let originalDeck = args.deck.cards.flatMap { card in
+            Array(repeating: card.cardId, count: card.count.intValue)
+        }
+        let redraftDeck = args.redraftDeck.cards.flatMap { card -> [String] in
+            let count = card.cardId == args.picked.cardId
+                ? max(0, card.count.intValue - 1)
+                : card.count.intValue
+            return Array(repeating: card.cardId, count: count)
+        }
+
+        ArenaLastDrafts.instance.addRedraftPick(info.pickStartTime,
+                                                Date(),
+                                                args.picked.cardId,
+                                                info.choices,
+                                                args.slot,
+                                                false,
+                                                originalDeck,
+                                                redraftDeck,
+                                                args.deck.id.int64Value,
+                                                redraftDeckId,
+                                                args.losses,
+                                                args.isUnderground,
+                                                isOverlayEnabled: Settings.enableArenasmithOverlay && Settings.showArenasmithScore)
     }
     
     private static func onBaconChange(_ sender: BaconWatcher, _ args: BaconEventArgs) {

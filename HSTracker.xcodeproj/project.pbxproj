@@ -4063,6 +4063,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		B8AA10012FC1000100AA1001 /* Arena */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Arena; sourceTree = "<group>"; };
+		B8AA10022FC1000100AA1002 /* Arena */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Arena; sourceTree = "<group>"; };
+		B8AA10032FC1000100AA1003 /* Arena */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Arena; sourceTree = "<group>"; };
 		B8AEB6142FB2770200CDA2C0 /* AnimalCompanionGenerator */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = AnimalCompanionGenerator; sourceTree = "<group>"; };
 		C4537347985E5790B88F7690 /* Pools */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Pools; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -4566,6 +4569,7 @@
 		439C7ECD1C777FA900D29859 /* UIs */ = {
 			isa = PBXGroup;
 			children = (
+				B8AA10032FC1000100AA1003 /* Arena */,
 				4C1923972392E174007EBB0F /* Battlegrounds */,
 				436F5D0A1CFD5F4900DEB9A1 /* Cards */,
 				43EECB971C7DEF7F0077AC1B /* ClassColor.swift */,
@@ -4703,6 +4707,7 @@
 		43C567EA1D5E309600451B6F /* HSReplay */ = {
 			isa = PBXGroup;
 			children = (
+				B8AA10022FC1000100AA1002 /* Arena */,
 				B8CE65D2294FE8C200E8D168 /* Data */,
 				43C567EB1D5E314500451B6F /* HSReplay.swift */,
 				43C567FE1D5E4F9700451B6F /* HSReplayAPI.swift */,
@@ -5620,6 +5625,7 @@
 		B854622B2CE007A90083BB31 /* HearthWatcher */ = {
 			isa = PBXGroup;
 			children = (
+				B8AA10012FC1000100AA1001 /* Arena */,
 				B85462322CE016B80083BB31 /* ArenaWatcher.swift */,
 				B854622C2CE008360083BB31 /* BaconWatcher.swift */,
 				B854623A2CE01C5F0083BB31 /* BattlegroundsLeaderboardWatcher.swift */,
@@ -6841,6 +6847,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				B8AA10012FC1000100AA1001 /* Arena */,
+				B8AA10022FC1000100AA1002 /* Arena */,
+				B8AA10032FC1000100AA1003 /* Arena */,
 				B8AEB6142FB2770200CDA2C0 /* AnimalCompanionGenerator */,
 				C4537347985E5790B88F7690 /* Pools */,
 			);

@@ -64,6 +64,9 @@ class SceneHandler {
                 }
             }
             Watchers.baconWatcher.stop()
+        } else if from == .draft {
+            Watchers.arenaWatcher.stop()
+            Watchers.arenaStateWatcher.stop()
         } else if from == .gameplay {
             game.updateBattlegroundsSessionVisibility()
             Watchers.battlegroundsTeammateBoardStateWatcher.stop()
@@ -100,6 +103,9 @@ class SceneHandler {
                 }
             }
             Watchers.baconWatcher.run()
+        } else if to == .draft {
+            Watchers.arenaWatcher.run()
+            Watchers.arenaStateWatcher.run()
         } else if to == .gameplay {
             game.updateBattlegroundsSessionVisibility()
             Watchers.bigCardWatcher.run()
