@@ -1147,7 +1147,12 @@ class HSReplayAPI {
     // anonymous request from a player with trials left is still served.
 
     @available(macOS 10.15.0, *)
-    private static func postArena<P: Encodable, R: Decodable>(url: String, parameters: P, as: R.Type) async -> R? {
+    /// `logResponse` dumps the raw body before decoding, for when the decoded
+    /// model loses something the JSON text still has - key order, say, which is
+    /// gone the moment an object becomes a Swift Dictionary. Off by default;
+    /// pass it at a call site while investigating.
+    private static func postArena<P: Encodable, R: Decodable>(url: String, parameters: P, as: R.Type,
+                                                              logResponse: Bool = false) async -> R? {
         let encoder = JSONEncoder()
         var body: Data?
         do {
@@ -1166,6 +1171,9 @@ class HSReplayAPI {
                 startAuthorizedRequest(url, method: .POST, headers: ["Content-Type": "application/json"], body: body, completionHandler: { result in
                     switch result {
                     case .success(let response):
+                        if logResponse {
+                            logger.debug("Arena response from \(url): \(String(data: response.data, encoding: .utf8) ?? "ERROR")")
+                        }
                         let parsed: R? = parseResponse(data: response.data, defaultValue: nil)
                         continuation.resume(returning: parsed)
                     case .failure(let error):
@@ -1182,6 +1190,9 @@ class HSReplayAPI {
                 guard let data = response as? Data else {
                     continuation.resume(returning: nil)
                     return
+                }
+                if logResponse {
+                    logger.debug("Arena response from \(url): \(String(data: data, encoding: .utf8) ?? "ERROR")")
                 }
                 let parsed: R? = parseResponse(data: data, defaultValue: nil)
                 continuation.resume(returning: parsed)
@@ -1212,7 +1223,8 @@ class HSReplayAPI {
 
     @available(macOS 10.15.0, *)
     static func getArenaHeroPickStats(parameters: ArenaHeroPickParams) async -> ArenaHeroPickApiResponse? {
-        return await postArena(url: HSReplay.arenaHeroPickUrl, parameters: parameters, as: ArenaHeroPickApiResponse.self)
+        return await postArena(url: HSReplay.arenaHeroPickUrl, parameters: parameters,
+                               as: ArenaHeroPickApiResponse.self)
     }
 
     @available(macOS 10.15.0, *)

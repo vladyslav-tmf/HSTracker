@@ -116,6 +116,8 @@ final class ArenaPickHelperViewModel: ObservableObject {
     private var pickedRedraftDeck: [String]?
     private var scrollValue = 0.0
     private var arenaCardStatsCache = [String: ArenaCardStats?]()
+    /// Straight off the watcher rather than `getArenaInfo()` - see `loadChoices`.
+    private var deckId: Int64 = 0
 
     // MARK: visibility, straight off the settings
 
@@ -160,6 +162,7 @@ final class ArenaPickHelperViewModel: ObservableObject {
         watcher.onIsPackageSelectOpen.subscribe { [weak self] in self?.isPackageSelectOpen = $0 }
         watcher.onIsUndergroundChanged.subscribe { [weak self] in self?.isUnderground = $0 }
         watcher.onArenaSeasonIdChanged.subscribe { [weak self] in self?.arenaSeasonId = $0 }
+        watcher.onDeckIdChanged.subscribe { [weak self] in self?.deckId = $0 }
         watcher.onHeroZoomed.subscribe { [weak self] in self?.isHeroZoomed = $0 != nil }
         watcher.onHeroPicked.subscribe { [weak self] in self?.chosenHero = $0 }
         watcher.onHeroPowerPicked.subscribe { [weak self] in self?.chosenHeroPower = $0 }
@@ -300,13 +303,25 @@ final class ArenaPickHelperViewModel: ObservableObject {
         guard !newChoices.isEmpty else { return }
 
         let offered = newChoices.map { $0.cardId }
-        guard let accountId = MirrorHelper.getAccountId(),
-              let arenaInfo = MirrorHelper.getArenaInfo() else {
+        guard let accountId = MirrorHelper.getAccountId() else {
+            logger.info("No account id from the mirror, aborting")
             return
         }
-        let deckId = arenaInfo.deck.id.int64Value
+        // Deliberately not `MirrorHelper.getArenaInfo()`, which HDT uses here: the
+        // mirror reports *no* arena deck until the deck holds at least one card, so
+        // it is nil for exactly the two picks that matter most - the hero pick and
+        // the first card pick. The watcher reads the id off the draft deck object
+        // itself, which is populated the moment the run is created.
+        let deckId = self.deckId
+        guard deckId != 0 else {
+            logger.info("No arena deck id yet, aborting")
+            return
+        }
         let accountHi = accountId.hi.int64Value
         let accountLo = accountId.lo.int64Value
+
+        logger.debug("Loading \(newChoices.count) choices for deck \(deckId), hero '\(chosenHero)', "
+                     + "hero power '\(chosenHeroPower)'")
 
         if chosenHero.isEmpty && chosenHeroPower.isEmpty {
             await loadHeroPick(offered: offered, deckId: deckId, hi: accountHi, lo: accountLo, choices: newChoices)
@@ -341,8 +356,11 @@ final class ArenaPickHelperViewModel: ObservableObject {
             return
         }
 
+        // `losses` only feeds the redraft number, and a redraft always has a deck -
+        // so this is the one path where getArenaInfo() is both needed and available.
+        let losses = isRedraft ? (MirrorHelper.getArenaInfo()?.losses.intValue ?? 0) : 0
         await loadCardPick(offered: offered, deckId: deckId, lo: accountLo, hi: accountHi,
-                           losses: arenaInfo.losses.intValue)
+                           losses: losses)
     }
 
     private var userOwnsPremium: Bool {
@@ -375,8 +393,12 @@ final class ArenaPickHelperViewModel: ObservableObject {
             await MainActor.run { reset() }
         }
 
-        guard let firstCard = Cards.by(cardId: choices[0].cardId),
+        // Cards.by(cardId:) deliberately hides hero powers and hero-skin heroes,
+        // which is every card this screen offers - so the arena hero paths go
+        // through the unfiltered lookup instead.
+        guard let firstCard = Cards.any(byId: choices[0].cardId),
               firstCard.type == .hero || firstCard.type == .hero_power else {
+            logger.info("First choice \(choices[0].cardId) is not a hero or hero power, aborting")
             return
         }
         let dualClass = firstCard.type == .hero_power
@@ -411,7 +433,10 @@ final class ArenaPickHelperViewModel: ObservableObject {
     }
 
     private func loadDualClassHeroPick(offered: [String], deckId: Int64, hi: Int64, lo: Int64, choices: [ArenaDraftChoice]) async {
-        guard let firstCard = Cards.by(cardId: choices[0].cardId),
+        // Cards.by(cardId:) deliberately hides hero powers and hero-skin heroes,
+        // which is every card this screen offers - so the arena hero paths go
+        // through the unfiltered lookup instead.
+        guard let firstCard = Cards.any(byId: choices[0].cardId),
               firstCard.type == .hero || firstCard.type == .hero_power else {
             return
         }
@@ -455,7 +480,7 @@ final class ArenaPickHelperViewModel: ObservableObject {
             }
         }
         return choices.map { choice in
-            guard let cardClass = Cards.by(cardId: choice.cardId)?.playerClass else { return nil }
+            guard let cardClass = Cards.any(byId: choice.cardId)?.playerClass else { return nil }
             return byClass[cardClass]
         }
     }
@@ -585,7 +610,7 @@ final class ArenaPickHelperViewModel: ObservableObject {
         hoveredChoice = choice
         updateTileViewModels()
 
-        guard let choice, let card = Cards.by(cardId: choice.cardId) else {
+        guard let choice, let card = Cards.any(byId: choice.cardId) else {
             return
         }
 

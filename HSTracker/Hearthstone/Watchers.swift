@@ -183,7 +183,7 @@ class Watchers {
         // left to advise on, and the overlay comes down.
         let heroPower = args.deck.heroPower
         let isDualClass = !heroPower.isEmpty
-            && Cards.by(cardId: heroPower)?.playerClass != Cards.by(cardId: args.deck.hero)?.playerClass
+            && Cards.any(byId: heroPower)?.playerClass != Cards.any(byId: args.deck.hero)?.playerClass
         if args.slot == (isDualClass ? 31 : 30) {
             DispatchQueue.main.async {
                 if #available(macOS 10.15, *) {

@@ -126,6 +126,7 @@ final class ArenaStateWatcher {
     // The mirror owns the cached Mono handles; all we do from here is tell it when
     // they may have gone stale. HDT nils out its ScryCache at exactly these points.
     private var _resetCache = true
+    private var _loggedNilState = false
 
     init(delay: TimeInterval = 0.016) {
         self.delay = delay
@@ -196,8 +197,16 @@ final class ArenaStateWatcher {
         guard let state = MirrorHelper.getArenaState(deckListVersion: _deckListVersion,
                                                      redraftDeckListVersion: _redraftDeckListVersion,
                                                      resetCache: _resetCache) else {
+            if !_loggedNilState {
+                _loggedNilState = true
+                logger.debug("getArenaState returned nil - draft screen not loaded yet")
+            }
             _resetCache = true
             return
+        }
+        if _loggedNilState {
+            _loggedNilState = false
+            logger.debug("getArenaState is live again")
         }
         _resetCache = false
 
@@ -208,6 +217,7 @@ final class ArenaStateWatcher {
             // can swap them out from under us.
             _resetCache = true
             _clientState = ArenaClientState(clientState: clientState, sessionState: sessionState)
+            logger.debug("Arena client state: \(clientState) / \(sessionState)")
             onClientStateChanged.raise(_clientState)
         }
 
@@ -283,6 +293,9 @@ final class ArenaStateWatcher {
             // screen), so only publish them when the client is actually drafting and
             // the count looks like a real offer.
             let isValidChoiceState = choices.isEmpty || choices.count == 3
+            logger.debug("Arena choices changed: \(choices.count) [\(choices.map { $0.cardId }.joined(separator: ", "))] "
+                         + "version \(state.choicesVersion.intValue), state \(clientState), "
+                         + "publishing: \(clientState.isDrafting && isValidChoiceState)")
             if clientState.isDrafting && isValidChoiceState {
                 _choices = choices
                 _choicesVersion = state.choicesVersion.intValue
