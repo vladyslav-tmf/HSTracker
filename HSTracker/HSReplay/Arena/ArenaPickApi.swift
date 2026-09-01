@@ -53,15 +53,32 @@ struct ArenaCardPickApiResponse: Decodable {
         var messages_old: [String: [String]]?
     }
 
+    /// HDT declares `score` as a string, but the service sends it as a JSON
+    /// number. Newtonsoft coerces one to the other without comment; `JSONDecoder`
+    /// raises a `typeMismatch` that discards the whole response, so the decode is
+    /// spelled out rather than synthesized.
     struct ArenasmithScore: Decodable {
         var score: String?
         var plaque: Int?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: ArenasmithScoreKeys.self)
+            score = try container.decodeNumericStringIfPresent(forKey: .score)
+            plaque = try container.decodeIfPresent(Int.self, forKey: .plaque)
+        }
     }
 
     struct ArenasmithDynScore: Decodable {
         var score: String?
         var plaque: Int?
         var caution: String?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: ArenasmithDynScoreKeys.self)
+            score = try container.decodeNumericStringIfPresent(forKey: .score)
+            plaque = try container.decodeIfPresent(Int.self, forKey: .plaque)
+            caution = try container.decodeIfPresent(String.self, forKey: .caution)
+        }
     }
 
     struct RelatedCardsBlock: Decodable {
@@ -83,6 +100,17 @@ struct ArenaCardPickApiResponse: Decodable {
 
         var all: [String] { (direct ?? []) + (indirect ?? []) }
     }
+}
+
+// Declared at file scope rather than inside the records they belong to: nesting
+// them alongside the types that already sit inside `ArenaCardPickApiResponse`
+// would put them three levels deep.
+private enum ArenasmithScoreKeys: String, CodingKey {
+    case score, plaque
+}
+
+private enum ArenasmithDynScoreKeys: String, CodingKey {
+    case score, plaque, caution
 }
 
 // MARK: - messages
@@ -216,5 +244,25 @@ struct ArenaPackages: Decodable {
     struct ArenaPackagesData: Decodable {
         var packages_by_key_card: [String: [String]]?
         var packages_from_package_only_cards: [String: String]?
+    }
+}
+
+/// Reads a field the API may send either as a string or as a number.
+///
+/// The Arenasmith score arrives as a JSON number while everything downstream -
+/// `formatScore`, which splits on the decimal point, and `Float(_:)` - is written
+/// against HDT's string. Rendering a whole number without a fractional part gives
+/// those the same text Newtonsoft hands HDT.
+fileprivate extension KeyedDecodingContainer {
+    func decodeNumericStringIfPresent(forKey key: Key) throws -> String? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        if let string = try? decode(String.self, forKey: key) {
+            return string
+        }
+        let number = try decode(Double.self, forKey: key)
+        guard number == number.rounded(), number.magnitude < 1e15 else {
+            return String(number)
+        }
+        return String(Int(number))
     }
 }
