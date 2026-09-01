@@ -106,12 +106,15 @@ struct ArenaCardImageView: View {
         .onAppear(perform: load)
     }
 
+    // The rendered card, not the square art crop: HDT binds the card's `Asset`,
+    // which is the full frame with name, cost and text. `ImageUtils.art` is the
+    // bare 256x256 artwork and reads as the wrong image entirely at this size.
     private func load() {
-        if let cached = ImageUtils.cachedArt(cardId: cardId) {
+        if let cached = ImageUtils.cachedCardArt(cardId: cardId) {
             image = cached
             return
         }
-        ImageUtils.art(for: cardId) { img in
+        ImageUtils.cardArt(for: cardId) { img in
             DispatchQueue.main.async {
                 self.image = img
             }

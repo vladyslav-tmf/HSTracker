@@ -15,8 +15,16 @@ import SwiftUI
 @available(macOS 10.15, *)
 private struct ArenaOptionBadge<Content: View>: View {
     let foreground: Color
+    /// HDT's `BadgeBorderColor` - teal normally, red in Underground, and white on
+    /// the caution badge while improvements are highlighted.
+    let border: Color
+    let isUnderground: Bool
     let dimmed: Bool
     @ViewBuilder let content: () -> Content
+
+    private var shape: UnevenRoundedCornersShape {
+        UnevenRoundedCornersShape(bottomLeading: 3, bottomTrailing: 3)
+    }
 
     var body: some View {
         content()
@@ -24,12 +32,68 @@ private struct ArenaOptionBadge<Content: View>: View {
             .frame(height: 26)
             .frame(minWidth: 28)
             .padding(.horizontal, 4)
-            .background(
-                UnevenRoundedCornersShape(bottomLeading: 3, bottomTrailing: 3)
-                    .fill(Color.black)
-            )
+            .background(background)
             .opacity(dimmed ? 0.2 : 1)
             .shadow(color: .black.opacity(0.2), radius: 2.5, x: 1, y: 1)
+    }
+
+    /// Five layers, as the XAML stacks them: a black base, the arena_cell_bg
+    /// texture masked to it, a translucent black inner edge, the coloured border
+    /// over a barely-there dark wash, and a shade falling from the top edge.
+    /// The borders are open on top - XAML's `BorderThickness="2,0,2,2"` - so they
+    /// read as the badge hanging off the plate above it.
+    private var background: some View {
+        ZStack {
+            // Only this subtree is clipped: the strokes below sit on the boundary
+            // and would lose their outer half to a clip applied over everything.
+            shape.fill(Color.black)
+                .overlay(texture)
+                .clipShape(shape)
+            ArenaBadgeSideBorder()
+                .stroke(Color.black.opacity(0.267), lineWidth: 3)
+                .padding(1.5)
+            shape.fill(Color.black.opacity(0.063))
+            ArenaBadgeSideBorder()
+                .stroke(border, lineWidth: 2)
+                .padding(1)
+            shape.fill(LinearGradient(gradient: Gradient(stops: [
+                .init(color: Color.black.opacity(0.533), location: 0),
+                .init(color: Color.black.opacity(0), location: 0.3)
+            ]), startPoint: .top, endPoint: .bottom))
+        }
+    }
+
+    /// Drawn at its native 156x52 and centred, overflowing a narrow badge exactly
+    /// as HDT's IgnoreSizeDecorator does, then masked by the caller's clip.
+    @ViewBuilder
+    private var texture: some View {
+        if let image = NSImage(named: isUnderground ? "arena-cell-bg-underground" : "arena-cell-bg") {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 156, height: 52)
+        }
+    }
+}
+
+/// The left, bottom and right edges only, with the bottom corners rounded - an
+/// open path, so stroking it leaves the top edge bare like `BorderThickness`
+/// with a zero top.
+@available(macOS 10.15, *)
+struct ArenaBadgeSideBorder: Shape {
+    var radius: CGFloat = 3
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - radius))
+        path.addQuadCurve(to: CGPoint(x: rect.minX + radius, y: rect.maxY),
+                          control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.maxY - radius),
+                          control: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        return path
     }
 }
 
@@ -92,6 +156,8 @@ struct ArenaPickSingleCardOptionView: View {
         HStack(spacing: 4) {
             if showRelatedCards {
                 ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                                 border: viewModel.badgeBorderColor,
+                                 isUnderground: viewModel.isUnderground,
                                  dimmed: !viewModel.hasRelatedCards) {
                     ArenaCardGlyph()
                         .fill(viewModel.badgeForegroundColor)
@@ -99,14 +165,22 @@ struct ArenaPickSingleCardOptionView: View {
                 }
             }
             if viewModel.showSynergy {
-                ArenaOptionBadge(foreground: viewModel.badgeForegroundColor, dimmed: false) {
+                ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                                 border: viewModel.badgeBorderColor,
+                                 isUnderground: viewModel.isUnderground,
+                                 dimmed: false) {
                     ArenaBoostGlyph()
                         .fill(viewModel.badgeForegroundColor)
                         .frame(width: 19, height: 20)
                 }
             }
             if let caution = viewModel.cautionImageName, let image = NSImage(named: caution) {
-                ArenaOptionBadge(foreground: .white, dimmed: false) {
+                // HDT switches this one's border to white while improvements
+                // are highlighted.
+                ArenaOptionBadge(foreground: .white,
+                                 border: viewModel.highlightImprovements ? .white : viewModel.badgeBorderColor,
+                                 isUnderground: viewModel.isUnderground,
+                                 dimmed: false) {
                     Image(nsImage: image).resizable().scaledToFit().frame(width: 18, height: 18)
                 }
             }
@@ -154,11 +228,17 @@ struct ArenaPickSingleHeroOptionView: View {
 
     private var rates: some View {
         HStack(spacing: 4) {
-            ArenaOptionBadge(foreground: viewModel.badgeForegroundColor, dimmed: false) {
+            ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                             border: viewModel.badgeBorderColor,
+                             isUnderground: viewModel.isUnderground,
+                             dimmed: false) {
                 rateLabel(String.localizedString("ArenaPick_SingleHero_WinRate", comment: ""),
                           value: viewModel.winrate)
             }
-            ArenaOptionBadge(foreground: viewModel.badgeForegroundColor, dimmed: false) {
+            ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                             border: viewModel.badgeBorderColor,
+                             isUnderground: viewModel.isUnderground,
+                             dimmed: false) {
                 rateLabel(String.localizedString("ArenaPick_SingleHero_PickRate", comment: ""),
                           value: viewModel.pickrate)
             }
