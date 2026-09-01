@@ -16,9 +16,11 @@ import SwiftUI
 private struct ArenaOptionBadge<Content: View>: View {
     let foreground: Color
     /// HDT's `BadgeBorderColor` - teal normally, red in Underground, and white on
-    /// the caution badge while improvements are highlighted.
+    /// the improvements badge while it is highlighted.
     let border: Color
     let isUnderground: Bool
+    /// See `ArenaBadgeTexture`.
+    let textureSize: CGSize
     let dimmed: Bool
     @ViewBuilder let content: () -> Content
 
@@ -26,15 +28,20 @@ private struct ArenaOptionBadge<Content: View>: View {
         UnevenRoundedCornersShape(bottomLeading: 3, bottomTrailing: 3)
     }
 
+    /// HDT's badge is a 26-tall grid with a 28pt minimum width, and the content
+    /// sits inside the border's `Padding="4,0"` - so the inset is applied before
+    /// the minimum, not after it.
     var body: some View {
         content()
             .foregroundColor(foreground)
-            .frame(height: 26)
-            .frame(minWidth: 28)
             .padding(.horizontal, 4)
+            .frame(minWidth: 28)
+            .frame(height: 26)
             .background(background)
             .opacity(dimmed ? 0.2 : 1)
-            .shadow(color: .black.opacity(0.2), radius: 2.5, x: 1, y: 1)
+            // DropShadowEffect BlurRadius="5" ShadowDepth="2" Direction="-115",
+            // which points down and to the left.
+            .shadow(color: .black.opacity(0.2), radius: 2.5, x: -0.85, y: 1.81)
     }
 
     /// Five layers, as the XAML stacks them: a black base, the arena_cell_bg
@@ -63,17 +70,26 @@ private struct ArenaOptionBadge<Content: View>: View {
         }
     }
 
-    /// Drawn at its native 156x52 and centred, overflowing a narrow badge exactly
-    /// as HDT's IgnoreSizeDecorator does, then masked by the caller's clip.
+    /// Drawn centred and overflowing a narrow badge, exactly as HDT's
+    /// IgnoreSizeDecorator does, then masked by the caller's clip.
     @ViewBuilder
     private var texture: some View {
         if let image = NSImage(named: isUnderground ? "arena-cell-bg-underground" : "arena-cell-bg") {
             Image(nsImage: image)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 156, height: 52)
+                .frame(width: textureSize.width, height: textureSize.height)
         }
     }
+}
+
+/// The size HDT draws `arena_cell_bg` at behind a badge. It is not the asset's own
+/// size in either case - the hero row paints it at 156x52 and the card row at half
+/// that, so the same texture reads at a different scale on each.
+@available(macOS 10.15, *)
+private enum ArenaBadgeTexture {
+    static let hero = CGSize(width: 156, height: 52)
+    static let card = CGSize(width: 78, height: 26)
 }
 
 /// The left, bottom and right edges only, with the bottom corners rounded - an
@@ -138,70 +154,98 @@ struct ArenaPickSingleCardOptionView: View {
                     .padding(.top, 595)
             }
 
-            badges
-                // The multi-tribe banner on a card overhangs its frame slightly;
-                // HDT nudges the badge row down to sit under it.
-                .padding(.top, viewModel.isMultiTribe ? 561 : 565)
-
-            if showSynergy && viewModel.showSynergy {
-                synergyBubble
-                    .padding(.top, 580)
-                    .padding(.leading, 180)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            badgeRow
         }
     }
 
+    /// HDT lays the row out at 561 whether or not the card carries a multi-tribe
+    /// banner. What changes is the clip: on a multi-tribe card the clip box moves
+    /// down 4pt and the row moves up 4pt inside it, so the banner - which overhangs
+    /// the bottom of the card art - reads as covering the badges' top edge.
+    private var badgeRow: some View {
+        let clip: CGFloat = viewModel.isMultiTribe ? 4 : 0
+        // Only the row is clipped, not the plate above it: WPF's ClipToBounds is
+        // scoped to the one Grid, where `.clipped()` would take everything under it.
+        return badges
+            .padding(.top, -clip)
+            .clipped()
+            .padding(.top, 561 + clip)
+    }
+
+    /// Three badges, always drawn and dimmed to 20% when they do not apply - HDT
+    /// keeps the row a fixed width so it does not jump between picks. The first two
+    /// are gated on the related-cards setting and the third on synergies.
+    ///
+    /// HDT has a fourth element here, a white circle showing the synergy count at
+    /// `Margin="180,580"`, but its `Opacity` is pinned to 0 with nothing to animate
+    /// it, so it never appears. It is left out rather than ported invisible.
     private var badges: some View {
         HStack(spacing: 4) {
             if showRelatedCards {
-                ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
-                                 border: viewModel.badgeBorderColor,
-                                 isUnderground: viewModel.isUnderground,
-                                 dimmed: !viewModel.hasRelatedCards) {
-                    ArenaCardGlyph()
-                        .fill(viewModel.badgeForegroundColor)
-                        .frame(width: ArenaCardGlyph.width, height: ArenaCardGlyph.height)
-                        .shadow(color: .black.opacity(0.4), radius: 4)
-                }
+                relatedCardsBadge
+                infoBadge
             }
-            if viewModel.showSynergy {
-                ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
-                                 border: viewModel.badgeBorderColor,
-                                 isUnderground: viewModel.isUnderground,
-                                 dimmed: false) {
-                    ArenaBoostGlyph()
-                        .fill(viewModel.badgeForegroundColor)
-                        .frame(width: ArenaBoostGlyph.width, height: ArenaBoostGlyph.height)
-                        .shadow(color: .black.opacity(0.4), radius: 4)
-                }
-            }
-            if let caution = viewModel.cautionImageName, let image = NSImage(named: caution) {
-                // HDT switches this one's border to white while improvements
-                // are highlighted.
-                ArenaOptionBadge(foreground: .white,
-                                 border: viewModel.highlightImprovements ? .white : viewModel.badgeBorderColor,
-                                 isUnderground: viewModel.isUnderground,
-                                 dimmed: false) {
-                    Image(nsImage: image).resizable().scaledToFit().frame(width: 18, height: 18)
-                }
+            if showSynergy {
+                improvementsBadge
             }
         }
     }
 
-    /// The count of drafted cards this pick interacts with.
-    private var synergyBubble: some View {
-        ZStack {
-            Circle()
-                .fill(Color.white)
-                .overlay(Circle().strokeBorder(Color.black, lineWidth: 2))
-                .shadow(color: .black.opacity(0.4), radius: 7, x: 1.5, y: 1.5)
-            Text(verbatim: "\(viewModel.synergyCount)")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(.black)
-                .fixedSize()
+    /// Lit when the pick generates or relates to other cards.
+    private var relatedCardsBadge: some View {
+        ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                         border: viewModel.badgeBorderColor,
+                         isUnderground: viewModel.isUnderground,
+                         textureSize: ArenaBadgeTexture.card,
+                         dimmed: !viewModel.hasRelatedCards) {
+            ArenaCardGlyph()
+                .fill(viewModel.badgeForegroundColor)
+                .frame(width: ArenaCardGlyph.width, height: ArenaCardGlyph.height)
+                .shadow(color: .black.opacity(0.4), radius: 4)
         }
-        .frame(width: 25, height: 25)
+    }
+
+    /// Lit when the pick carries an advisory the bottom panel spells out. HDT sets
+    /// this one in Chunkfive, nudged 2pt down to sit on the badge's optical centre.
+    private var infoBadge: some View {
+        ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
+                         border: viewModel.badgeBorderColor,
+                         isUnderground: viewModel.isUnderground,
+                         textureSize: ArenaBadgeTexture.card,
+                         dimmed: !viewModel.hasInfo) {
+            Text(verbatim: "i")
+                .font(.custom("ChunkFive", size: 18))
+                .foregroundColor(viewModel.badgeForegroundColor)
+                .fixedSize()
+                .padding(.top, 2)
+                .shadow(color: .black.opacity(0.4), radius: 4)
+        }
+    }
+
+    /// How many drafted cards the pick interacts with. While the bottom panel is
+    /// highlighting improvements HDT turns the icon, the count and the border white
+    /// - the `BoostIconWhite` swap, which here is just a different fill.
+    private var improvementsBadge: some View {
+        let highlighted = viewModel.highlightImprovements
+        let tint = highlighted ? Color.white : viewModel.badgeForegroundColor
+        return ArenaOptionBadge(foreground: tint,
+                                border: highlighted ? .white : viewModel.badgeBorderColor,
+                                isUnderground: viewModel.isUnderground,
+                                textureSize: ArenaBadgeTexture.card,
+                                dimmed: !viewModel.showSynergy) {
+            HStack(spacing: 0) {
+                ArenaBoostGlyph()
+                    .fill(tint)
+                    .frame(width: ArenaBoostGlyph.width, height: ArenaBoostGlyph.height)
+                    .shadow(color: .black.opacity(0.4), radius: 4)
+                Text(verbatim: "\(viewModel.synergyCount)")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(tint)
+                    .fixedSize()
+                    .padding(.leading, 2)
+                    .shadow(color: .black.opacity(0.4), radius: 4)
+            }
+        }
     }
 }
 
@@ -233,6 +277,7 @@ struct ArenaPickSingleHeroOptionView: View {
             ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
                              border: viewModel.badgeBorderColor,
                              isUnderground: viewModel.isUnderground,
+                             textureSize: ArenaBadgeTexture.hero,
                              dimmed: false) {
                 rateLabel(String.localizedString("ArenaPick_SingleHero_WinRate", comment: ""),
                           value: viewModel.winrate)
@@ -240,6 +285,7 @@ struct ArenaPickSingleHeroOptionView: View {
             ArenaOptionBadge(foreground: viewModel.badgeForegroundColor,
                              border: viewModel.badgeBorderColor,
                              isUnderground: viewModel.isUnderground,
+                             textureSize: ArenaBadgeTexture.hero,
                              dimmed: false) {
                 rateLabel(String.localizedString("ArenaPick_SingleHero_PickRate", comment: ""),
                           value: viewModel.pickrate)
@@ -257,5 +303,7 @@ struct ArenaPickSingleHeroOptionView: View {
                 .font(.system(size: 14, weight: .bold))
         }
         .fixedSize()
+        .padding(.leading, 2)
+        .shadow(color: .black.opacity(0.4), radius: 4)
     }
 }

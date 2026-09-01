@@ -132,14 +132,9 @@ final class ArenaPickSingleCardOptionViewModel: ObservableObject {
         }
     }
 
-    /// HDT ships caution-red.png / caution-yellow.png for this.
-    var cautionImageName: String? {
-        switch cardStats?.arenasmith_dyn?.caution {
-        case "Red": return "caution-red"
-        case "Yellow": return "caution-yellow"
-        default: return nil
-        }
-    }
+    // The `caution` field on the dynamic score picks one of two warning icons in
+    // HDT, but its `GetIcon()` is private, uncalled and carries a "@todo: add this
+    // back" - so no badge is drawn from it here either.
 }
 
 // MARK: - hero options
