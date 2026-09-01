@@ -11,7 +11,8 @@ import SwiftUI
 ///
 /// The plate is drawn as concentric rounded rectangles, exactly as the XAML layers
 /// them: gradient ground, an outer highlight ring at level 5, an inner highlight
-/// ring from level 3, a dark inner overlay, then the bolts and the score.
+/// ring from level 3, a dark inner overlay, then the flames, the bolts and the
+/// score.
 @available(macOS 10.15, *)
 struct ArenaPlaqueView: View {
     @ObservedObject var viewModel: ArenaPlaqueViewModel
@@ -38,6 +39,16 @@ struct ArenaPlaqueView: View {
     }
 
     private var plate: some View {
+        // A background rather than another stack layer: the outer flames are laid
+        // out in a box far larger than the plate, and a ZStack would take its size
+        // from them and stretch the plate to match. A background is offered the
+        // parent's size but never sets it. It also stays clear of the plate's own
+        // drop shadow, which HDT likewise applies below these.
+        plateBody
+            .background(outerFlames, alignment: .topLeading)
+    }
+
+    private var plateBody: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 5)
                 .fill(viewModel.backgroundGradient)
@@ -58,7 +69,7 @@ struct ArenaPlaqueView: View {
                 .padding(viewModel.innerInset)
 
             if viewModel.isLevel4OrHigher {
-                flames
+                innerFlames
             }
 
             RoundedRectangle(cornerRadius: viewModel.isLevel5 ? 3 : 4)
@@ -90,33 +101,100 @@ struct ArenaPlaqueView: View {
             .shadow(color: viewModel.isLevel5 ? viewModel.glowColor.opacity(0.8) : .clear, radius: 7)
     }
 
-    private var flames: some View {
-        // Soft licks of the plate's accent colour rising from the bottom edge, in
-        // place of HDT's flame bitmaps. The gradient has to reach zero well inside
-        // the ellipse: at full width three overlapping glows saturate the whole
-        // plate and the clip below then reads as a hard-edged rectangle instead of
-        // as flames.
-        ZStack(alignment: .bottom) {
+    // HDT's flames, from `ArenaPlaque.xaml`. Three sit inside the plate, clipped
+    // to its inner rounded rect; two more hang off its sides at level 5.
+    private static let innerFlameHeight: CGFloat = 70
+    private static let outerFlameHeights: [CGFloat] = [77, 99]
+    /// HDT puts the outer pair in a Grid inset -100 on every side.
+    private static let outerFlameInset: CGFloat = 100
+    /// Their `Margin`s, verbatim; the offsets below are derived from these the way
+    /// WPF derives them, rather than being measured off a screenshot.
+    private static let outerFlameMargins = [
+        EdgeInsets(top: 0, leading: -84, bottom: 0, trailing: 0),
+        EdgeInsets(top: 0, leading: 65, bottom: 4, trailing: 0)
+    ]
+
+    private static var innerFlameOrigins: [CGPoint] {
+        let width = ArenaFlame.width(forHeight: innerFlameHeight)
+        return [
+            CGPoint(x: -25, y: 10),
+            CGPoint(x: 16, y: 23),
+            // The third is placed from the canvas's right edge: Canvas.Right="-27".
+            CGPoint(x: ArenaPlaqueViewModel.size.width + 27 - width, y: 20)
+        ]
+    }
+
+    /// The Grid the outer pair lives in, 100pt proud of the plate on every side.
+    private static var outerFlameBox: CGSize {
+        CGSize(width: ArenaPlaqueViewModel.size.width + 2 * outerFlameInset,
+               height: ArenaPlaqueViewModel.size.height + 2 * outerFlameInset)
+    }
+
+    /// A fixed-size child in a stretched Grid slot ends up centred in what the
+    /// margins leave of it, which is what decides where these land. In the Grid's
+    /// own space, so the stack below can be sized to it.
+    private static func outerFlameOrigin(index: Int) -> CGPoint {
+        let height = outerFlameHeights[index]
+        let margin = outerFlameMargins[index]
+        let box = outerFlameBox
+        let free = CGSize(width: box.width - margin.leading - margin.trailing,
+                          height: box.height - margin.top - margin.bottom)
+        return CGPoint(x: margin.leading + (free.width - ArenaFlame.width(forHeight: height)) / 2,
+                       y: margin.top + (free.height - height) / 2)
+    }
+
+    private var innerFlames: some View {
+        flameStack(canvas: size,
+                   heights: [Self.innerFlameHeight, Self.innerFlameHeight, Self.innerFlameHeight],
+                   origins: Self.innerFlameOrigins,
+                   data: viewModel.innerFlames)
+            // The XAML dims them to 0.6 until level 5, and tightens the clip from
+            // Rect 2,2,86,54 to 3,3,84,52 at the same time.
+            .opacity(viewModel.isLevel5 ? 1 : 0.6)
+            .clipShape(RoundedRectangle(cornerRadius: 3).inset(by: viewModel.isLevel5 ? 3 : 2))
+    }
+
+    @ViewBuilder
+    private var outerFlames: some View {
+        if viewModel.isLevel5 {
+            outerFlameStack
+        }
+    }
+
+    private var outerFlameStack: some View {
+        // Laid out in the oversized Grid and then shifted back over the plate.
+        // The stack has to be that big: nothing clips these, and the rasterization
+        // below would otherwise cut them off at the plate's edge.
+        flameStack(canvas: Self.outerFlameBox,
+                   heights: Self.outerFlameHeights,
+                   origins: (0..<2).map { Self.outerFlameOrigin(index: $0) },
+                   data: viewModel.outerFlames)
+            .offset(x: -Self.outerFlameInset, y: -Self.outerFlameInset)
+    }
+
+    private func flameStack(canvas: CGSize,
+                            heights: [CGFloat],
+                            origins: [CGPoint],
+                            data: [ArenaPlaqueViewModel.FlameData]) -> some View {
+        ZStack(alignment: .topLeading) {
             Color.clear
-            ForEach(Array(viewModel.innerFlames.enumerated()), id: \.offset) { index, flame in
-                Ellipse()
-                    .fill(
-                        RadialGradient(gradient: Gradient(stops: [
-                            .init(color: viewModel.glowColor.opacity(0.5), location: 0),
-                            .init(color: viewModel.glowColor.opacity(0.18), location: 0.45),
-                            .init(color: viewModel.glowColor.opacity(0), location: 1)
-                        ]), center: .center, startRadius: 0, endRadius: 17)
-                    )
-                    .frame(width: 34, height: 30)
+            ForEach(Array(data.enumerated()), id: \.offset) { index, flame in
+                ArenaFlameView(isUnderground: viewModel.isUnderground)
+                    .frame(width: ArenaFlame.width(forHeight: heights[index]), height: heights[index])
+                    // HDT applies these as a LayoutTransform, which resizes the
+                    // layout box and so shifts the centring; taking them as a
+                    // render transform about the centre instead moves each flame by
+                    // a point or two, which is inside the jitter they already carry.
                     .scaleEffect(x: CGFloat(flame.scaleX), y: CGFloat(flame.scaleY))
                     .rotationEffect(.degrees(flame.angle))
-                    .offset(x: CGFloat(index - 1) * 24, y: 9)
+                    .offset(x: origins[index].x, y: origins[index].y)
             }
         }
-        .compositingGroup()
-        .opacity(0.75)
-        // XAML clips the flame canvas to Rect 2,2,86,54 with a 3pt radius.
-        .clipShape(RoundedRectangle(cornerRadius: 3).inset(by: 2))
+        .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
+        // HDT caches both flame grids as bitmaps (BitmapCache RenderAtScale="2").
+        // Worth matching: these are by far the heaviest drawings in the overlay,
+        // and they sit next to a particle emitter that redraws every frame.
+        .drawingGroup()
         .allowsHitTesting(false)
     }
 
