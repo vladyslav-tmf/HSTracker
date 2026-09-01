@@ -193,6 +193,47 @@ final class ArenaPickSingleHeroOptionViewModel: ObservableObject {
         self.init(data: nil, isUnderground: isUnderground, variant: variant, index: index)
     }
 
+    // HDT gives each variant its own offsets: ArenaPickSingleHeroOption.xaml has
+    // them as literal margins, while the hero-power and dual-class controls bind
+    // Margin from their own view models. The port previously used the hero values
+    // for all three, which put the hero-power and dual-class plates far too high.
+    //
+    // The `.hero` values are the one case measured against the live client rather
+    // than taken from HDT (which has 230 / 533). Measuring the overlay window and
+    // the game side by side puts the hero portrait at reference y 188.3-430.3, so
+    // HDT's 230 dropped the plaque wholly inside the portrait and its 533 pushed
+    // the badges down onto the hero-name row. 159 centres the 58-tall plaque on
+    // the portrait's top edge, and 435 sits just under its bottom. Hero power and
+    // dual class keep HDT's numbers - those screens have not been measured.
+    var plaqueTop: CGFloat {
+        switch variant {
+        case .hero: return 159
+        case .heroPower: return 560
+        case .dualClassHero: return hasStats ? 170 : 560
+        }
+    }
+
+    var statsTop: CGFloat {
+        switch variant {
+        case .hero: return 435
+        case .heroPower: return 630
+        case .dualClassHero: return hasStats ? 428 : 630
+        }
+    }
+
+    /// HDT pulls the outer two options inward on the hero-power and dual-class
+    /// screens (its `HorizontalMargin`), leaving the middle one alone.
+    private var horizontalInset: CGFloat {
+        switch variant {
+        case .hero: return 0
+        case .heroPower: return 47
+        case .dualClassHero: return 55
+        }
+    }
+
+    var leadingInset: CGFloat { index == 2 ? horizontalInset : 0 }
+    var trailingInset: CGFloat { index == 0 ? horizontalInset : 0 }
+
     var badgeBorderColor: Color { ArenaOptionPalette.border(isUnderground: isUnderground) }
     var badgeForegroundColor: Color {
         isUnderground ? ArenaOptionPalette.heroUndergroundForeground : ArenaOptionPalette.normalForeground

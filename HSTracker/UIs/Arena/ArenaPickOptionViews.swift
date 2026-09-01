@@ -142,12 +142,14 @@ struct ArenaPickSingleHeroOptionView: View {
             Color.clear
 
             ArenaPlaqueView(viewModel: viewModel.plaqueViewModel)
-                .padding(.top, 230)
+                .padding(.top, viewModel.plaqueTop)
 
             if viewModel.hasStats {
-                rates.padding(.top, 533)
+                rates.padding(.top, viewModel.statsTop)
             }
         }
+        .padding(.leading, viewModel.leadingInset)
+        .padding(.trailing, viewModel.trailingInset)
     }
 
     private var rates: some View {

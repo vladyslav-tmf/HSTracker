@@ -23,7 +23,18 @@ struct ArenaPickHelperView: View {
     private static let referenceHeight: CGFloat = 1080
     private static let optionsFraction: CGFloat = 3.25 / 4.25
 
+    // Measured against the live client rather than taken from HDT, whose shared
+    // grid gives every row a 280.37 pitch: the game spaces the three hero arches
+    // 306.8 reference units apart, centred on 544.2 rather than the 549.49 the
+    // column maths lands on. The row keeps its own width and is nudged those few
+    // units left, overhanging the column symmetrically. Card, hero-power and
+    // dual-class rows are left on HDT's spacing - they have not been measured.
+    private static let heroPitch: CGFloat = 306.8
+    private static let heroRowCenter: CGFloat = 544.2
+
     private var optionsWidth: CGFloat { Self.referenceWidth * Self.optionsFraction }
+    /// Centre of the 782-unit middle column, where an unshifted row lands.
+    private var optionsColumnCenter: CGFloat { (optionsWidth / 1000) * 499 }
     private var railWidth: CGFloat { Self.referenceWidth - optionsWidth }
 
     var body: some View {
@@ -107,11 +118,22 @@ struct ArenaPickHelperView: View {
         }
     }
 
+    @ViewBuilder
     private func heroRow(_ stats: [ArenaPickSingleHeroOptionViewModel]) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(stats.enumerated()), id: \.offset) { _, option in
-                ArenaPickSingleHeroOptionView(viewModel: option)
-                    .frame(maxWidth: .infinity)
+        if stats.first?.variant == .hero {
+            HStack(spacing: 0) {
+                ForEach(Array(stats.enumerated()), id: \.offset) { _, option in
+                    ArenaPickSingleHeroOptionView(viewModel: option)
+                        .frame(width: Self.heroPitch)
+                }
+            }
+            .offset(x: Self.heroRowCenter - optionsColumnCenter)
+        } else {
+            HStack(spacing: 0) {
+                ForEach(Array(stats.enumerated()), id: \.offset) { _, option in
+                    ArenaPickSingleHeroOptionView(viewModel: option)
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
     }

@@ -69,7 +69,9 @@ struct ArenaPlaqueView: View {
 
             if viewModel.isLevel5, #available(macOS 12.0, *) {
                 ArenaPlaqueParticlesView(gradients: viewModel.particleGradients)
-                    .padding(-10)
+                    // HDT's Margin="-10,-10,-10,3": the motes drift out past the
+                    // plate on three sides but stop short of its bottom edge.
+                    .padding(EdgeInsets(top: -10, leading: -10, bottom: 3, trailing: -10))
                     .allowsHitTesting(false)
             }
 
