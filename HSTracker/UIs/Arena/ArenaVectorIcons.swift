@@ -209,3 +209,55 @@ struct ArenaBoostGlyph: Shape {
         ArenaVectorIcon(base: Self.base, viewBox: Self.viewBox).path(in: rect)
     }
 }
+
+// MARK: - deck rail
+
+/// HDT's `BoostGeo` and `BoostSmallGeo`: the chevron-tailed tab behind a deck-rail
+/// synergy marker, drawn pointing left and rotated 180 degrees for the right-hand
+/// one. Geometry copied verbatim from `ArenaPickHelper.xaml`.
+@available(macOS 10.15, *)
+enum ArenaBoostTab {
+    static let viewBox = CGSize(width: 65, height: 64)
+    static let smallViewBox = CGSize(width: 61, height: 30)
+    /// HDT's `BoostPen`, a flat-capped mitred white stroke authored against the
+    /// viewbox above, so it scales with the tab rather than staying 8pt wide.
+    static let penWidth: CGFloat = 8
+
+    /// Blue: something already drafted improves the hovered pick.
+    static let leftColor = Color(hex: "#205080")
+    /// Orange: the hovered pick improves something already drafted.
+    static let rightColor = Color(hex: "#805020")
+
+    static let path = ArenaVectorPath.path(from: "F1 M65,64z M0,0z M22.4512,2L59.0078,2C60.7323,2,62.0811,3.37032,62.0811,5L62.0811,59 62.0771,59.1523C61.9962,60.7142,60.6783,62,59.0078,62L22.5508,62 22.3496,61.9932C21.4135,61.9333,20.5636,61.4599,20.0332,60.7197L19.9248,60.5566 2.52734,32.5791C1.9538,31.6567,1.93406,30.5101,2.46289,29.5742L2.57617,29.3896 19.874,3.36719C20.4011,2.57432,21.2833,2.06624,22.2559,2.00586L22.4512,2z")
+    static let smallPath = ArenaVectorPath.path(from: "F1 M61,30z M0,0z M18.8711,2L56,2C57.6569,2,59,3.34314,59,4.99999L59,25C59,26.6568,57.6569,28,56,28L18.96,28C18.3837,28,17.821,27.8339,17.3389,27.5244L17.1367,27.3828 3.58301,17.0166C2.03175,15.8299,2.01931,13.5176,3.51075,12.3076L3.66016,12.1943 17.126,2.56055C17.6351,2.19632,18.2451,2.00001,18.8711,2z")
+}
+
+/// One boost tab, filled and stroked in its own coordinate space so the pen scales
+/// with it, then clipped to the viewbox the way HDT's `ClipGeometry` does - the
+/// stroke straddles the geometry's edge and would otherwise spill out.
+@available(macOS 10.15, *)
+struct ArenaBoostTabView: View {
+    let color: Color
+    /// The right-hand tab is the same drawing under a 180-degree rotation.
+    let pointsRight: Bool
+    var small = false
+
+    private var viewBox: CGSize { small ? ArenaBoostTab.smallViewBox : ArenaBoostTab.viewBox }
+    private var base: Path { small ? ArenaBoostTab.smallPath : ArenaBoostTab.path }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let scale = min(proxy.size.width / viewBox.width, proxy.size.height / viewBox.height)
+            let shape = ArenaVectorIcon(base: base, viewBox: viewBox)
+            ZStack {
+                shape.fill(color)
+                shape.stroke(Color.white,
+                             style: StrokeStyle(lineWidth: ArenaBoostTab.penWidth * scale,
+                                                lineCap: .butt, lineJoin: .miter))
+            }
+            .clipped()
+            .rotationEffect(.degrees(pointsRight ? 180 : 0))
+        }
+        .aspectRatio(viewBox.width / viewBox.height, contentMode: .fit)
+    }
+}

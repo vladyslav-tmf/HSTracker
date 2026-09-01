@@ -197,8 +197,9 @@ struct ArenaPickHelperView: View {
     }
 }
 
-/// One row of the deck rail: a synergy marker, or a discard suggestion while
-/// editing a redraft deck.
+/// One row of the deck rail: the highlight behind a card that interacts with the
+/// hovered pick, the marker saying which way that interaction runs, and - while
+/// editing a redraft deck - Arenasmith's score for the card.
 @available(macOS 10.15, *)
 struct ArenaDeckListTileView: View {
     @ObservedObject var viewModel: ArenaDeckListTileViewModel
@@ -209,52 +210,189 @@ struct ArenaDeckListTileView: View {
     private static let rowHeight: CGFloat = 40.75
 
     var body: some View {
-        HStack(spacing: 4) {
-            Spacer()
+        ZStack(alignment: .trailing) {
+            Color.clear
 
-            if showDiscard, viewModel.suggestRemove, let score = viewModel.arenasmithScore {
-                discardBadge(score: score)
+            if showSynergy {
+                highlight
+                marker
             }
 
-            if showSynergy, viewModel.showSynergy {
-                synergyMarker
+            // HDT only reveals the plate for tiles the redraft scoring actually
+            // returned a score for, and styles rather than hides the rest.
+            if showDiscard, viewModel.arenasmithScore != nil {
+                scoreBadge
             }
         }
+        .frame(height: Self.rowHeight)
+    }
+
+    // MARK: highlight
+
+    /// A soft white wash across the row. HDT eases it in over 0.2s and cuts it on
+    /// the way out, so moving between picks does not leave a trail of fades.
+    private var highlight: some View {
+        HStack(spacing: 0) {
+            if let image = NSImage(named: "highlight-white") {
+                Image(nsImage: image)
+                    .resizable()
+                    .frame(height: Self.rowHeight)
+                    .padding(.leading, -4)
+            }
+        }
+        .frame(height: Self.rowHeight)
+        .padding(.trailing, 76)
+        .clipped()
+        .opacity(viewModel.showSynergy ? 1 : 0)
+        .animation(viewModel.showSynergy ? .easeOut(duration: 0.2) : nil,
+                   value: viewModel.showSynergy)
+    }
+
+    // MARK: marker
+
+    /// The boost tab plus a thumbnail of the pick being hovered, so the row says
+    /// which of the three offered cards it is reacting to.
+    private var marker: some View {
+        HStack(spacing: 0) {
+            if viewModel.showSynergy {
+                boostTab
+                hoveredCardTile
+            }
+        }
+        .frame(height: 30)
         .padding(.trailing, 47)
-        .frame(height: Self.rowHeight, alignment: .center)
     }
 
-    private var synergyMarker: some View {
-        // HDT ships three boost icons - one pointing left (this card enhances the
-        // hovered pick), one right (the pick enhances this card), and a paired one
-        // for both. Drawn rather than SF Symbols, which need macOS 11.
-        HStack(spacing: -3) {
-            if viewModel.synergy.contains(.provides) {
-                ArenaChevronGlyph(pointsLeft: true)
-                    .fill(Color(hex: "#205080"))
-                    .overlay(ArenaChevronGlyph(pointsLeft: true).stroke(Color.white, lineWidth: 2))
-                    .frame(width: 16, height: 16)
+    /// HDT picks one of three arrangements by the exact synergy value: a left tab
+    /// with the boost arrows inside it, a right one, or - when it runs both ways -
+    /// two small tabs stacked, with no arrows.
+    @ViewBuilder
+    private var boostTab: some View {
+        if viewModel.synergy == .both {
+            VStack(spacing: 2) {
+                ArenaBoostTabView(color: ArenaBoostTab.leftColor, pointsRight: false, small: true)
+                    .frame(height: 10)
+                ArenaBoostTabView(color: ArenaBoostTab.rightColor, pointsRight: true, small: true)
+                    .frame(height: 10)
             }
-            if viewModel.synergy.contains(.receives) {
-                ArenaChevronGlyph(pointsLeft: false)
-                    .fill(Color(hex: "#805020"))
-                    .overlay(ArenaChevronGlyph(pointsLeft: false).stroke(Color.white, lineWidth: 2))
-                    .frame(width: 16, height: 16)
+            .padding(.trailing, -10)
+        } else if viewModel.synergy.contains(.receives) {
+            tabWithArrows(color: ArenaBoostTab.leftColor, pointsRight: false, arrowOffset: 2)
+                .padding(.trailing, -8)
+        } else {
+            tabWithArrows(color: ArenaBoostTab.rightColor, pointsRight: true, arrowOffset: -2)
+                .padding(.trailing, -12)
+        }
+    }
+
+    /// The arrows sit inside the tab, nudged towards its blunt end.
+    private func tabWithArrows(color: Color, pointsRight: Bool, arrowOffset: CGFloat) -> some View {
+        ZStack {
+            ArenaBoostTabView(color: color, pointsRight: pointsRight)
+                .frame(height: 20)
+            ArenaBoostGlyph()
+                .fill(Color.white)
+                .frame(width: 12 * ArenaBoostGlyph.viewBox.width / ArenaBoostGlyph.viewBox.height,
+                       height: 12)
+                .offset(x: arrowOffset)
+        }
+        .frame(height: 20)
+    }
+
+    /// 30x30 of the hovered pick's tile art, cropped to its left edge and boxed the
+    /// way HDT boxes it - a rounded mask, a gradient falling from the left, and a
+    /// white border open on the leading side.
+    private var hoveredCardTile: some View {
+        ZStack {
+            // Identity is set here, by the parent: `.onAppear` fires once per
+            // view identity, so without this the thumbnail would keep the first
+            // pick's art as the cursor moves along the row of choices.
+            ArenaTileImageView(cardId: viewModel.hoveredChoiceCardId)
+                .id(viewModel.hoveredChoiceCardId ?? "")
+                .frame(width: 112, height: 28)
+                .padding(.leading, -64)
+                .opacity(0.8)
+                .frame(width: 26, height: 26, alignment: .leading)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .padding(2)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(LinearGradient(gradient: Gradient(stops: [
+                    .init(color: Color.black.opacity(0.4), location: 0),
+                    .init(color: Color.black.opacity(0), location: 0.4)
+                ]), startPoint: .leading, endPoint: .trailing))
+                .padding(3)
+
+            RoundedRectangle(cornerRadius: 3)
+                .strokeBorder(Color.white, lineWidth: 2)
+        }
+        .frame(width: 30, height: 30)
+    }
+
+    // MARK: score
+
+    /// Arenasmith's score for a drafted card, shown while editing a redraft deck.
+    /// A card it wants gone turns red and takes a cross over the plate.
+    private var scoreBadge: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(hex: viewModel.suggestRemove ? "#4f1719" : "#23272A"))
+                .overlay(RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(Color(hex: viewModel.suggestRemove ? "#f82a1e" : "#13171A"), lineWidth: 1))
+
+            Text(verbatim: viewModel.arenasmithScore.map { "\(Int($0))" } ?? "–")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(viewModel.suggestRemove ? .white : Color.white.opacity(0.75))
+                .fixedSize()
+                .frame(maxWidth: .infinity)
+
+            if viewModel.suggestRemove, let cross = NSImage(named: "tier-x") {
+                Image(nsImage: cross)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26)
+                    .padding(.leading, -12)
+                    .padding(.top, 3)
             }
         }
-        .padding(.horizontal, 5)
-        .frame(height: 24)
-        .background(RoundedRectangle(cornerRadius: 3).fill(Color.black.opacity(0.75)))
+        .frame(width: 34, height: 28)
+        .padding(.trailing, 49)
+    }
+}
+
+/// The hovered pick's tile art, loaded once per card id.
+@available(macOS 10.15, *)
+private struct ArenaTileImageView: View {
+    let cardId: String?
+    @SwiftUI.State private var image: NSImage?
+
+    init(cardId: String?) {
+        self.cardId = cardId
+        // Seeded from the cache so a card that has already been shown does not
+        // flash empty for a frame while the async load returns.
+        _image = SwiftUI.State(initialValue: cardId.flatMap { ImageUtils.cachedTile(cardId: $0) })
     }
 
-    private func discardBadge(score: Double) -> some View {
-        Text(verbatim: "\(Int(score))")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(.white)
-            .fixedSize()
-            .padding(.horizontal, 6)
-            .frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 3).fill(Color.black.opacity(0.75)))
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image).resizable()
+            } else {
+                Color.clear
+            }
+        }
+        .onAppear(perform: load)
+    }
+
+    private func load() {
+        guard let cardId, !cardId.isEmpty else { return }
+        if let cached = ImageUtils.cachedTile(cardId: cardId) {
+            image = cached
+            return
+        }
+        ImageUtils.tile(for: cardId) { loaded in
+            DispatchQueue.main.async { image = loaded }
+        }
     }
 }
 
@@ -265,32 +403,5 @@ extension ArenaPickHelperViewModel {
     /// own `ShowStats`.
     var isVisible: Bool {
         Settings.enableArenasmithOverlay && showStats
-    }
-}
-
-/// HDT's `BoostGeo` - a chevron-tailed plaque, blue pointing left and orange
-/// pointing right.
-@available(macOS 10.15, *)
-struct ArenaChevronGlyph: Shape {
-    let pointsLeft: Bool
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let notch = rect.width * 0.32
-        if pointsLeft {
-            path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.minX + notch, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.minX + notch, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        } else {
-            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX - notch, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX - notch, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        }
-        path.closeSubpath()
-        return path
     }
 }
