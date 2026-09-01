@@ -89,6 +89,7 @@ class RootOverlayWindow: OverWindowController {
         updateArenaPanelHover(at: viewPoint)
         updateArenaDirectionTrigger(at: viewPoint)
         updateArenaCardListTrigger(at: viewPoint)
+        updateArenaTooltipHover(at: viewPoint)
 
         guard !viewModel.interactiveRegions.isEmpty else {
             setIgnoresMouseEvents(true)
@@ -255,6 +256,21 @@ class RootOverlayWindow: OverWindowController {
                 arenaCardListArmPending[index] = false
                 arenaCardListWatcher(index).start()
             }
+        }
+    }
+
+    // HDT's OverlayExtensions.IsOverlayHoverVisible regions - the three badges
+    // under each offered card and each deck-rail synergy marker. Hover-visible is
+    // not the same as hit-test visible: the region reacts to the cursor without
+    // taking the click, so this samples rather than flipping ignoresMouseEvents.
+    private func updateArenaTooltipHover(at viewPoint: NSPoint) {
+        guard #available(macOS 10.15, *) else { return }
+        // `last`, not `first`: regions are reported in view-tree order, so a later
+        // sibling is the one drawn on top and the one WPF's hit-testing would pick.
+        let match = viewModel.arenaTooltipRegions.last { $0.frame.contains(viewPoint) }
+        let pickHelper = viewModel.arenaPickHelper
+        if pickHelper.hoveredTooltip != match?.target {
+            pickHelper.hoveredTooltip = match?.target
         }
     }
 

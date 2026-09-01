@@ -22,6 +22,8 @@ struct ArenaPickHelperView: View {
     /// The three wedges leading across to the deck rail, and the rail's own frame.
     @Binding var cardListDirectionShapes: [[CGPoint]]
     @Binding var cardListTriggerFrame: CGRect?
+    /// Every hover-visible region in the helper, for the window to sample against.
+    @Binding var tooltipRegions: [ArenaTooltipRegion]
 
     // HDT's outer grid: 3.25* for the pick area, 1* for the deck rail.
     private static let referenceWidth: CGFloat = 1440
@@ -100,6 +102,9 @@ struct ArenaPickHelperView: View {
         .onPreferenceChange(ArenaCardListTriggerKey.self) { rect in
             cardListTriggerFrame = rect
         }
+        .onPreferenceChange(ArenaTooltipRegionKey.self) { regions in
+            tooltipRegions = regions
+        }
     }
 
     /// HDT drives this with four storyboards keyed off `StateChange`; entering the
@@ -142,11 +147,13 @@ struct ArenaPickHelperView: View {
                 heroRow(dualClassStats)
             } else if let cardStats = viewModel.cardStats {
                 HStack(spacing: 0) {
-                    ForEach(Array(cardStats.enumerated()), id: \.offset) { _, option in
+                    ForEach(Array(cardStats.enumerated()), id: \.offset) { index, option in
                         ArenaPickSingleCardOptionView(viewModel: option,
+                                                      index: index,
                                                       showScore: viewModel.arenasmithScoreVisible,
                                                       showRelatedCards: viewModel.relatedCardsVisible,
-                                                      showSynergy: viewModel.synergiesVisible)
+                                                      showSynergy: viewModel.synergiesVisible,
+                                                      hoveredTooltip: viewModel.hoveredTooltip)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -212,7 +219,8 @@ struct ArenaPickHelperView: View {
                     ForEach(viewModel.redraftTileViewModels) { tile in
                         ArenaDeckListTileView(viewModel: tile,
                                               showSynergy: viewModel.synergiesVisible,
-                                              showDiscard: viewModel.redraftDiscardVisible)
+                                              showDiscard: viewModel.redraftDiscardVisible,
+                                              hoveredTooltip: viewModel.hoveredTooltip)
                     }
                 }
                 .padding(.top, viewModel.redraftScrollOffset)
@@ -222,7 +230,8 @@ struct ArenaPickHelperView: View {
                 ForEach(viewModel.tileViewModels) { tile in
                     ArenaDeckListTileView(viewModel: tile,
                                           showSynergy: viewModel.synergiesVisible,
-                                          showDiscard: viewModel.redraftDiscardVisible)
+                                          showDiscard: viewModel.redraftDiscardVisible,
+                                          hoveredTooltip: viewModel.hoveredTooltip)
                 }
             }
             .padding(.top, viewModel.scrollOffset)
@@ -239,6 +248,7 @@ struct ArenaDeckListTileView: View {
     @ObservedObject var viewModel: ArenaDeckListTileViewModel
     let showSynergy: Bool
     let showDiscard: Bool
+    let hoveredTooltip: ArenaTooltipTarget?
 
     /// HDT's deck rows are 30pt tall inside a 40.75pt scroll step.
     private static let rowHeight: CGFloat = 40.75
@@ -294,6 +304,12 @@ struct ArenaDeckListTileView: View {
             }
         }
         .frame(height: 30)
+        // HDT hangs the tooltip off the marker itself, not the whole row.
+        .arenaOverlayTooltip(.deckTile(cardId: viewModel.cardId,
+                                       choiceIndex: viewModel.hoveredChoiceIndex),
+                             runs: viewModel.tooltipRuns,
+                             isEnabled: viewModel.hasTooltip,
+                             hovered: hoveredTooltip)
         .padding(.trailing, 47)
     }
 

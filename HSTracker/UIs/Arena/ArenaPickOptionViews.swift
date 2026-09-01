@@ -141,9 +141,13 @@ struct UnevenRoundedCornersShape: Shape {
 @available(macOS 10.15, *)
 struct ArenaPickSingleCardOptionView: View {
     @ObservedObject var viewModel: ArenaPickSingleCardOptionViewModel
+    /// Which of the three offered cards this is, so its badges can name the
+    /// hover-visible regions they report.
+    let index: Int
     let showScore: Bool
     let showRelatedCards: Bool
     let showSynergy: Bool
+    let hoveredTooltip: ArenaTooltipTarget?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -203,6 +207,11 @@ struct ArenaPickSingleCardOptionView: View {
                 .frame(width: ArenaCardGlyph.width, height: ArenaCardGlyph.height)
                 .shadow(color: .black.opacity(0.4), radius: 4)
         }
+        .arenaOverlayTooltip(.relatedCards(index),
+                             runs: [ArenaTooltipRun(
+                                text: String.localizedString("ArenaPick_SingleCard_HasRelatedCards", comment: ""))],
+                             isEnabled: viewModel.hasRelatedCards,
+                             hovered: hoveredTooltip)
     }
 
     /// Lit when the pick carries an advisory the bottom panel spells out. HDT sets
@@ -220,6 +229,11 @@ struct ArenaPickSingleCardOptionView: View {
                 .padding(.top, 2)
                 .shadow(color: .black.opacity(0.4), radius: 4)
         }
+        .arenaOverlayTooltip(.additionalInfo(index),
+                             runs: [ArenaTooltipRun(
+                                text: String.localizedString("ArenaPick_SingleCard_HasAdditionalInfo", comment: ""))],
+                             isEnabled: viewModel.hasInfo,
+                             hovered: hoveredTooltip)
     }
 
     /// How many drafted cards the pick interacts with. While the bottom panel is
@@ -246,6 +260,12 @@ struct ArenaPickSingleCardOptionView: View {
                     .shadow(color: .black.opacity(0.4), radius: 4)
             }
         }
+        .arenaOverlayTooltip(.improvements(index),
+                             runs: [ArenaTooltipRun(
+                                text: String.localizedString("ArenaPick_SingleCard_ImprovesOrImprovedByCards",
+                                                             comment: ""))],
+                             isEnabled: viewModel.showSynergy,
+                             hovered: hoveredTooltip)
     }
 }
 

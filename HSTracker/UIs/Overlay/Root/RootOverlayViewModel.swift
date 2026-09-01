@@ -71,4 +71,5 @@ class RootOverlayViewModel: ObservableObject {
     @Published var arenaDirectionTriggerShape = [CGPoint]()
     @Published var arenaCardListDirectionShapes = [[CGPoint]]()
     @Published var arenaCardListTriggerFrame: CGRect?
+    @Published var arenaTooltipRegions = [ArenaTooltipRegion]()
 }

@@ -34,6 +34,9 @@ final class ArenaDeckListTileViewModel: ObservableObject, Identifiable {
 
     @Published var synergy: ArenaSynergy = []
     @Published var hoveredChoiceCardId: String?
+    /// HDT keeps the whole `HoveredChoiceActor`; the index is the part used, to
+    /// light that choice's improvements badge while this row's marker is hovered.
+    @Published var hoveredChoiceIndex: Int?
     /// Arenasmith's score for this card, shown while editing a redraft deck.
     @Published var arenasmithScore: Double?
     @Published var suggestRemove = false
@@ -49,6 +52,37 @@ final class ArenaDeckListTileViewModel: ObservableObject, Identifiable {
     var cardName: String? { card?.name }
     var showSynergy: Bool { !synergy.isEmpty }
     var hoveredChoiceCardName: String? { Cards.by(cardId: hoveredChoiceCardId ?? "")?.name }
+
+    /// Whether the row has anything to say - HDT gates `ToolTipService.IsEnabled`
+    /// on this, and also uses it to decide whether hovering the row is worth
+    /// highlighting the matching choice for.
+    var hasTooltip: Bool {
+        (Settings.showArenaDeckSynergies && !synergy.isEmpty)
+            || (Settings.showArenaRedraftDiscard && suggestRemove)
+    }
+
+    /// "<hovered card> improves <this card>", and the reverse when it runs both
+    /// ways, with the card names bold. A discard suggestion says so instead.
+    var tooltipRuns: [ArenaTooltipRun] {
+        if suggestRemove {
+            return [ArenaTooltipRun(text: String.localizedString("ArenaRedraft_SuggestedDiscard", comment: ""))]
+        }
+        guard !synergy.isEmpty else { return [] }
+        let format = String.localizedString("ArenaPick_SynergyImprove", comment: "")
+        let hovered = hoveredChoiceCardName ?? ""
+        let own = cardName ?? ""
+        var runs = [ArenaTooltipRun]()
+        if synergy.contains(.receives) {
+            runs += ArenaTooltipRun.runs(format, first: hovered, second: own)
+        }
+        if synergy == .both {
+            runs.append(.lineBreak)
+        }
+        if synergy.contains(.provides) {
+            runs += ArenaTooltipRun.runs(format, first: own, second: hovered)
+        }
+        return runs
+    }
 }
 
 /// The Arenasmith draft overlay's state machine.
@@ -113,6 +147,15 @@ final class ArenaPickHelperViewModel: ObservableObject {
         didSet {
             guard hoveringCardList != oldValue else { return }
             updateTileViewModels()
+        }
+    }
+    /// Which hover-visible region the cursor is over. HDT gets MouseEnter and
+    /// MouseLeave on each; here `RootOverlayWindow` samples the cursor against the
+    /// frames the view reports, for the same reason the bottom panel does.
+    @Published var hoveredTooltip: ArenaTooltipTarget? {
+        didSet {
+            guard hoveredTooltip != oldValue else { return }
+            updateHighlightImprovements()
         }
     }
     /// Which of the three wedges running from a choice across to the deck rail the
@@ -292,6 +335,7 @@ final class ArenaPickHelperViewModel: ObservableObject {
 
         for tile in tileViewModels + redraftTileViewModels {
             tile.hoveredChoiceCardId = choice?.cardId
+            tile.hoveredChoiceIndex = choice?.index
             var synergy: ArenaSynergy = []
             if enhancedBy.contains(tile.cardId) { synergy.insert(.provides) }
             if enabled.contains(tile.cardId) { synergy.insert(.receives) }
@@ -641,6 +685,19 @@ final class ArenaPickHelperViewModel: ObservableObject {
     }
 
     // MARK: hover
+
+    /// Hovering a deck-rail marker that has something to say lights the matching
+    /// choice's improvements badge, so the two ends of the synergy are visibly
+    /// paired. HDT does this from the marker's own MouseEnter/MouseLeave.
+    private func updateHighlightImprovements() {
+        var highlighted: Int?
+        if case .deckTile(_, let choiceIndex) = hoveredTooltip {
+            highlighted = choiceIndex
+        }
+        for (index, card) in (cardStats ?? []).enumerated() where card.highlightImprovements != (index == highlighted) {
+            card.highlightImprovements = index == highlighted
+        }
+    }
 
     /// The cursor entered or left one of the wedges. HDT keeps a set rather than a
     /// flag because they overlap: two can contain the cursor at once.

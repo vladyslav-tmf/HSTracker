@@ -149,7 +149,8 @@ struct RootOverlayView: View {
                                             bottomPanelFrame: $viewModel.arenaBottomPanelFrame,
                                             directionTriggerShape: $viewModel.arenaDirectionTriggerShape,
                                             cardListDirectionShapes: $viewModel.arenaCardListDirectionShapes,
-                                            cardListTriggerFrame: $viewModel.arenaCardListTriggerFrame)
+                                            cardListTriggerFrame: $viewModel.arenaCardListTriggerFrame,
+                                            tooltipRegions: $viewModel.arenaTooltipRegions)
                             .padding(.leading, fourThreeInset)
                     }
                     .frame(width: canvasWidth, height: 1080)
