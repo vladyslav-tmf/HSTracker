@@ -108,6 +108,16 @@ final class ArenaPickHelperViewModel: ObservableObject {
             updateTileViewModels()
         }
     }
+    /// Cursor is over the deck rail itself. HDT's `HoveringCardList`.
+    @Published var hoveringCardList = false {
+        didSet {
+            guard hoveringCardList != oldValue else { return }
+            updateTileViewModels()
+        }
+    }
+    /// Which of the three wedges running from a choice across to the deck rail the
+    /// cursor is inside. HDT's `_hoveringCardListDirection`.
+    @Published private(set) var hoveringCardListDirection = Set<Int>()
     @Published private(set) var scrollOffset: CGFloat = 0
     @Published private(set) var redraftScrollOffset: CGFloat = 0
 
@@ -268,10 +278,13 @@ final class ArenaPickHelperViewModel: ObservableObject {
     /// Recomputes which drafted cards light up for the currently hovered choice.
     private func updateTileViewModels() {
         // Falling back to the last hovered choice keeps the deck highlighting up
-        // while the cursor is on the panel; without that guard the highlights
-        // would persist after the player stops hovering anything.
+        // while the cursor is on its way to, or resting on, the panel or the rail;
+        // without that guard the highlights would go the instant the in-game hover
+        // ends, which is before the cursor can reach either.
+        let keepAlive = hoveringPanel || hoveringBottomDirectionTrigger
+            || hoveringCardList || !hoveringCardListDirection.isEmpty
         let choice = hoveredChoice
-            ?? ((hoveringPanel || hoveringBottomDirectionTrigger) ? lastHoveredChoice : nil)
+            ?? ((keepAlive && !(choices?.isEmpty ?? true)) ? lastHoveredChoice : nil)
         let activeCard = choice.flatMap { cardStats?[safeIndex: $0.index] }?.cardStats
 
         let enhancedBy = activeCard?.related_cards?.enhanced_by_card_ids?.all ?? []
@@ -628,6 +641,43 @@ final class ArenaPickHelperViewModel: ObservableObject {
     }
 
     // MARK: hover
+
+    /// The cursor entered or left one of the wedges. HDT keeps a set rather than a
+    /// flag because they overlap: two can contain the cursor at once.
+    func setHoveringCardListDirection(_ index: Int, _ hovering: Bool) {
+        if hovering {
+            hoveringCardListDirection.insert(index)
+        } else {
+            hoveringCardListDirection.remove(index)
+        }
+        updateTileViewModels()
+    }
+
+    /// A wedge is live while its own choice is hovered, and stays live once the
+    /// cursor is inside it - but only while it is the only one containing the
+    /// cursor, since the three overlap heavily.
+    func enableCardListDirectionTrigger(_ index: Int) -> Bool {
+        hoveredChoice?.index == index
+            || (hoveringCardListDirection.contains(index) && hoveringCardListDirection.count == 1)
+    }
+
+    /// The deck rail only takes the cursor while there is a highlight to keep up.
+    var enableCardListTrigger: Bool {
+        hoveredChoice != nil || !hoveringCardListDirection.isEmpty || hoveringCardList
+    }
+
+    /// HDT's three `CardListDirectionTrigger` polygons: a wedge widening from each
+    /// choice out to the deck rail, in this view's 1440x1080 reference space.
+    static func cardListDirectionShape(forIndex index: Int) -> [CGPoint] {
+        let left: CGFloat
+        switch index {
+        case 0: left = 120
+        case 1: left = 400
+        default: left = 680
+        }
+        return [CGPoint(x: left, y: 220), CGPoint(x: 1120, y: 65),
+                CGPoint(x: 1120, y: 985), CGPoint(x: left, y: 600)]
+    }
 
     private static func directionShape(forIndex index: Int) -> [CGPoint] {
         let top: (CGFloat, CGFloat)

@@ -88,6 +88,7 @@ class RootOverlayWindow: OverWindowController {
         updateFilterRegionHover(at: viewPoint)
         updateArenaPanelHover(at: viewPoint)
         updateArenaDirectionTrigger(at: viewPoint)
+        updateArenaCardListTrigger(at: viewPoint)
 
         guard !viewModel.interactiveRegions.isEmpty else {
             setIgnoresMouseEvents(true)
@@ -186,6 +187,74 @@ class RootOverlayWindow: OverWindowController {
         if inside, arenaDirectionArmPending, pickHelper.hoveredChoice == nil {
             arenaDirectionArmPending = false
             arenaDirectionWatcher.start()
+        }
+    }
+
+    // HDT's CardListDirectionTriggers: three wedges, one per choice, widening from
+    // the choice across to the deck rail. They keep the rail's synergy highlights
+    // up while the cursor travels there, the same way the bottom funnel keeps the
+    // panel open. Alongside them the rail itself is a plain hover region.
+    //
+    // Three watchers rather than one: HDT gives each trigger its own, and their
+    // shapes overlap, so the cursor can be inside two at once.
+    private var _arenaCardListWatchers: [Any] = []
+    private var arenaCardListInside = [false, false, false]
+    private var arenaCardListArmPending = [false, false, false]
+
+    @available(macOS 10.15, *)
+    private func arenaCardListWatcher(_ index: Int) -> ArenaMouseDirectionWatcher {
+        if let existing = _arenaCardListWatchers[safeIndex: index] as? ArenaMouseDirectionWatcher {
+            return existing
+        }
+        let watchers = (0..<3).map { idx -> ArenaMouseDirectionWatcher in
+            let watcher = ArenaMouseDirectionWatcher()
+            watcher.onTimeout = { [weak self] in self?.endArenaCardListDirection(idx) }
+            watcher.onDirectionChange = { [weak self] direction in
+                // The rail is on the right, so heading left is heading away.
+                if direction.contains(.left) { self?.endArenaCardListDirection(idx) }
+            }
+            return watcher
+        }
+        _arenaCardListWatchers = watchers
+        return watchers[index]
+    }
+
+    @available(macOS 10.15, *)
+    private func endArenaCardListDirection(_ index: Int) {
+        arenaCardListWatcher(index).stop()
+        arenaCardListArmPending[index] = false
+        viewModel.arenaPickHelper.setHoveringCardListDirection(index, false)
+    }
+
+    private func updateArenaCardListTrigger(at viewPoint: NSPoint) {
+        guard #available(macOS 10.15, *) else { return }
+        let pickHelper = viewModel.arenaPickHelper
+
+        let onRail = viewModel.arenaCardListTriggerFrame?.contains(viewPoint) ?? false
+        if pickHelper.hoveringCardList != onRail {
+            pickHelper.hoveringCardList = onRail
+        }
+
+        for index in 0..<3 {
+            let shape = viewModel.arenaCardListDirectionShapes[safeIndex: index] ?? []
+            let inside = !shape.isEmpty && Self.polygon(shape, contains: viewPoint)
+
+            if inside && !arenaCardListInside[index] {
+                pickHelper.setHoveringCardListDirection(index, true)
+                arenaCardListWatcher(index).stop()
+                // As with the bottom funnel: the wedge covers the choice itself,
+                // so the watcher waits for the in-game hover to end rather than
+                // timing out while the cursor is still on the card.
+                arenaCardListArmPending[index] = true
+            } else if !inside && arenaCardListInside[index] {
+                endArenaCardListDirection(index)
+            }
+            arenaCardListInside[index] = inside
+
+            if inside, arenaCardListArmPending[index], pickHelper.hoveredChoice == nil {
+                arenaCardListArmPending[index] = false
+                arenaCardListWatcher(index).start()
+            }
         }
     }
 

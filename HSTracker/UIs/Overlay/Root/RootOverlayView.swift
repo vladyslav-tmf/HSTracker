@@ -147,7 +147,9 @@ struct RootOverlayView: View {
                         Color.clear
                         ArenaPickHelperView(viewModel: viewModel.arenaPickHelper,
                                             bottomPanelFrame: $viewModel.arenaBottomPanelFrame,
-                                            directionTriggerShape: $viewModel.arenaDirectionTriggerShape)
+                                            directionTriggerShape: $viewModel.arenaDirectionTriggerShape,
+                                            cardListDirectionShapes: $viewModel.arenaCardListDirectionShapes,
+                                            cardListTriggerFrame: $viewModel.arenaCardListTriggerFrame)
                             .padding(.leading, fourThreeInset)
                     }
                     .frame(width: canvasWidth, height: 1080)

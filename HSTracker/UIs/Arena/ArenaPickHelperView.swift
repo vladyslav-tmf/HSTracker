@@ -19,6 +19,9 @@ struct ArenaPickHelperView: View {
     @Binding var bottomPanelFrame: CGRect?
     /// Likewise for the direction funnel, as a polygon rather than a rect.
     @Binding var directionTriggerShape: [CGPoint]
+    /// The three wedges leading across to the deck rail, and the rail's own frame.
+    @Binding var cardListDirectionShapes: [[CGPoint]]
+    @Binding var cardListTriggerFrame: CGRect?
 
     // HDT's outer grid: 3.25* for the pick area, 1* for the deck rail.
     private static let referenceWidth: CGFloat = 1440
@@ -55,6 +58,14 @@ struct ArenaPickHelperView: View {
                     deckRail
                         .frame(width: railWidth)
                         .allowsHitTesting(false)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(
+                                    key: ArenaCardListTriggerKey.self,
+                                    value: viewModel.enableCardListTrigger
+                                        ? proxy.frame(in: .rootOverlayCanvas) : nil)
+                            }
+                        )
                 }
                 .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
                 .transition(transition)
@@ -67,9 +78,11 @@ struct ArenaPickHelperView: View {
         // empty shape when disabled, which is how it stops being re-enterable.
         .background(
             GeometryReader { proxy in
-                Color.clear.preference(
-                    key: ArenaDirectionTriggerKey.self,
-                    value: directionTriggerPoints(in: proxy))
+                Color.clear
+                    .preference(key: ArenaDirectionTriggerKey.self,
+                                value: directionTriggerPoints(in: proxy))
+                    .preference(key: ArenaCardListDirectionKey.self,
+                                value: cardListDirectionPoints(in: proxy))
             }
         )
         // Hit testing is disabled per-subtree above rather than here: the bottom
@@ -80,6 +93,12 @@ struct ArenaPickHelperView: View {
         }
         .onPreferenceChange(ArenaDirectionTriggerKey.self) { points in
             directionTriggerShape = points
+        }
+        .onPreferenceChange(ArenaCardListDirectionKey.self) { shapes in
+            cardListDirectionShapes = shapes
+        }
+        .onPreferenceChange(ArenaCardListTriggerKey.self) { rect in
+            cardListTriggerFrame = rect
         }
     }
 
@@ -131,6 +150,21 @@ struct ArenaPickHelperView: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+            }
+        }
+    }
+
+    /// HDT's three `CardListDirectionTrigger` polygons, mapped the same way the
+    /// bottom funnel is. Each is reported empty unless its own trigger is enabled.
+    private func cardListDirectionPoints(in proxy: GeometryProxy) -> [[CGPoint]] {
+        guard viewModel.showStats else { return [[], [], []] }
+        let frame = proxy.frame(in: .rootOverlayCanvas)
+        guard frame.width > 0 else { return [[], [], []] }
+        let scale = frame.width / Self.referenceWidth
+        return (0..<3).map { index in
+            guard viewModel.enableCardListDirectionTrigger(index) else { return [] }
+            return ArenaPickHelperViewModel.cardListDirectionShape(forIndex: index).map {
+                CGPoint(x: frame.minX + $0.x * scale, y: frame.minY + $0.y * scale)
             }
         }
     }

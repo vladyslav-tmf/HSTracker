@@ -69,4 +69,6 @@ class RootOverlayViewModel: ObservableObject {
 
     // The bottom panel's direction funnel, in canvas pixels.
     @Published var arenaDirectionTriggerShape = [CGPoint]()
+    @Published var arenaCardListDirectionShapes = [[CGPoint]]()
+    @Published var arenaCardListTriggerFrame: CGRect?
 }

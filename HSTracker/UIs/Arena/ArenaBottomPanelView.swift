@@ -173,6 +173,29 @@ struct ArenaDirectionTriggerKey: PreferenceKey {
     }
 }
 
+/// The three wedges running from each choice across to the deck rail, in canvas
+/// pixels. Always three entries; a disabled wedge reports as empty, which is how
+/// it stops being enterable.
+@available(macOS 10.15, *)
+struct ArenaCardListDirectionKey: PreferenceKey {
+    static var defaultValue: [[CGPoint]] = []
+    static func reduce(value: inout [[CGPoint]], nextValue: () -> [[CGPoint]]) {
+        let next = nextValue()
+        if !next.isEmpty { value = next }
+    }
+}
+
+/// The deck rail's own frame, for the same reason the bottom panel reports one.
+@available(macOS 10.15, *)
+struct ArenaCardListTriggerKey: PreferenceKey {
+    static var defaultValue: CGRect?
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        if let next = nextValue() {
+            value = value?.union(next) ?? next
+        }
+    }
+}
+
 @available(macOS 10.15, *)
 struct ArenaBottomPanelHoverKey: PreferenceKey {
     static var defaultValue: CGRect?
