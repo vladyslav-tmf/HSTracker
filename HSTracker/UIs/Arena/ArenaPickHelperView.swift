@@ -71,9 +71,12 @@ struct ArenaPickHelperView: View {
                 }
                 .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
                 .transition(transition)
+
+                tooltipBubble
             }
         }
         .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
+        .coordinateSpace(name: "arenaPickHelper")
         .animation(.easeOut(duration: 0.3), value: viewModel.isVisible)
         // The funnel, mapped from this view's reference space into canvas pixels
         // so RootOverlayWindow can hit-test the cursor against it. Reported as an
@@ -104,6 +107,26 @@ struct ArenaPickHelperView: View {
         }
         .onPreferenceChange(ArenaTooltipRegionKey.self) { regions in
             tooltipRegions = regions
+        }
+    }
+
+    /// The hovered region's tooltip, drawn here rather than on the region: both the
+    /// badge row and the deck rail are clipped, and WPF's ToolTip escapes that by
+    /// being a popup in its own window.
+    ///
+    /// HDT places these `Top` with a 5pt offset. The zero-height marker spanning
+    /// the region's width lets the bubble grow upward and centre on it without this
+    /// view knowing how tall it is.
+    @ViewBuilder
+    private var tooltipBubble: some View {
+        if let target = viewModel.hoveredTooltip,
+           let region = tooltipRegions.last(where: { $0.target == target }),
+           region.isEnabled, !region.runs.isEmpty {
+            Color.clear
+                .frame(width: region.anchor.width, height: 0)
+                .overlay(ArenaTooltipBubble(runs: region.runs).fixedSize(), alignment: .bottom)
+                .offset(x: region.anchor.minX, y: region.anchor.minY - 5)
+                .allowsHitTesting(false)
         }
     }
 
@@ -152,8 +175,7 @@ struct ArenaPickHelperView: View {
                                                       index: index,
                                                       showScore: viewModel.arenasmithScoreVisible,
                                                       showRelatedCards: viewModel.relatedCardsVisible,
-                                                      showSynergy: viewModel.synergiesVisible,
-                                                      hoveredTooltip: viewModel.hoveredTooltip)
+                                                      showSynergy: viewModel.synergiesVisible)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -219,8 +241,7 @@ struct ArenaPickHelperView: View {
                     ForEach(viewModel.redraftTileViewModels) { tile in
                         ArenaDeckListTileView(viewModel: tile,
                                               showSynergy: viewModel.synergiesVisible,
-                                              showDiscard: viewModel.redraftDiscardVisible,
-                                              hoveredTooltip: viewModel.hoveredTooltip)
+                                              showDiscard: viewModel.redraftDiscardVisible)
                     }
                 }
                 .padding(.top, viewModel.redraftScrollOffset)
@@ -230,8 +251,7 @@ struct ArenaPickHelperView: View {
                 ForEach(viewModel.tileViewModels) { tile in
                     ArenaDeckListTileView(viewModel: tile,
                                           showSynergy: viewModel.synergiesVisible,
-                                          showDiscard: viewModel.redraftDiscardVisible,
-                                          hoveredTooltip: viewModel.hoveredTooltip)
+                                          showDiscard: viewModel.redraftDiscardVisible)
                 }
             }
             .padding(.top, viewModel.scrollOffset)
@@ -248,7 +268,6 @@ struct ArenaDeckListTileView: View {
     @ObservedObject var viewModel: ArenaDeckListTileViewModel
     let showSynergy: Bool
     let showDiscard: Bool
-    let hoveredTooltip: ArenaTooltipTarget?
 
     /// HDT's deck rows are 30pt tall inside a 40.75pt scroll step.
     private static let rowHeight: CGFloat = 40.75
@@ -257,10 +276,20 @@ struct ArenaDeckListTileView: View {
         ZStack(alignment: .trailing) {
             Color.clear
 
-            if showSynergy {
-                highlight
+            // One opacity for the highlight and the marker together, as HDT's
+            // storyboard drives: eased in over 0.2s and cut on the way out, so
+            // moving between picks does not leave a trail of fades. They stay laid
+            // out at zero opacity - and so stay hoverable, which is how a discard
+            // suggestion still has somewhere to hang its tooltip.
+            ZStack(alignment: .trailing) {
+                if showSynergy {
+                    highlight
+                }
                 marker
             }
+            .opacity(viewModel.showSynergy ? 1 : 0)
+            .animation(viewModel.showSynergy ? .easeOut(duration: 0.2) : nil,
+                       value: viewModel.showSynergy)
 
             // HDT only reveals the plate for tiles the redraft scoring actually
             // returned a score for, and styles rather than hides the rest.
@@ -287,29 +316,27 @@ struct ArenaDeckListTileView: View {
         .frame(height: Self.rowHeight)
         .padding(.trailing, 76)
         .clipped()
-        .opacity(viewModel.showSynergy ? 1 : 0)
-        .animation(viewModel.showSynergy ? .easeOut(duration: 0.2) : nil,
-                   value: viewModel.showSynergy)
     }
 
     // MARK: marker
 
     /// The boost tab plus a thumbnail of the pick being hovered, so the row says
-    /// which of the three offered cards it is reacting to.
+    /// which of the three offered cards it is reacting to. Only the tab is gated on
+    /// the synergies setting; HDT keeps the thumbnail, and so the row's width,
+    /// whatever the setting says.
     private var marker: some View {
         HStack(spacing: 0) {
-            if viewModel.showSynergy {
+            if showSynergy, viewModel.showSynergy {
                 boostTab
-                hoveredCardTile
             }
+            hoveredCardTile
         }
         .frame(height: 30)
         // HDT hangs the tooltip off the marker itself, not the whole row.
         .arenaOverlayTooltip(.deckTile(cardId: viewModel.cardId,
                                        choiceIndex: viewModel.hoveredChoiceIndex),
                              runs: viewModel.tooltipRuns,
-                             isEnabled: viewModel.hasTooltip,
-                             hovered: hoveredTooltip)
+                             isEnabled: viewModel.hasTooltip)
         .padding(.trailing, 47)
     }
 

@@ -147,7 +147,6 @@ struct ArenaPickSingleCardOptionView: View {
     let showScore: Bool
     let showRelatedCards: Bool
     let showSynergy: Bool
-    let hoveredTooltip: ArenaTooltipTarget?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -210,8 +209,7 @@ struct ArenaPickSingleCardOptionView: View {
         .arenaOverlayTooltip(.relatedCards(index),
                              runs: [ArenaTooltipRun(
                                 text: String.localizedString("ArenaPick_SingleCard_HasRelatedCards", comment: ""))],
-                             isEnabled: viewModel.hasRelatedCards,
-                             hovered: hoveredTooltip)
+                             isEnabled: viewModel.hasRelatedCards)
     }
 
     /// Lit when the pick carries an advisory the bottom panel spells out. HDT sets
@@ -232,8 +230,7 @@ struct ArenaPickSingleCardOptionView: View {
         .arenaOverlayTooltip(.additionalInfo(index),
                              runs: [ArenaTooltipRun(
                                 text: String.localizedString("ArenaPick_SingleCard_HasAdditionalInfo", comment: ""))],
-                             isEnabled: viewModel.hasInfo,
-                             hovered: hoveredTooltip)
+                             isEnabled: viewModel.hasInfo)
     }
 
     /// How many drafted cards the pick interacts with. While the bottom panel is
@@ -264,8 +261,7 @@ struct ArenaPickSingleCardOptionView: View {
                              runs: [ArenaTooltipRun(
                                 text: String.localizedString("ArenaPick_SingleCard_ImprovesOrImprovedByCards",
                                                              comment: ""))],
-                             isEnabled: viewModel.showSynergy,
-                             hovered: hoveredTooltip)
+                             isEnabled: viewModel.showSynergy)
     }
 }
 

@@ -65,11 +65,31 @@ struct ArenaTooltipRun: Equatable {
     }
 }
 
-/// A hover-visible region's frame in canvas pixels, reported for hit testing.
+/// A hover-visible region, reported upward with everything needed to hit-test it
+/// and to draw its bubble somewhere else.
+///
+/// The bubble is drawn by `ArenaPickHelperView` rather than as an overlay on the
+/// region itself: the badge row and the deck rail are both clipped, and where WPF's
+/// ToolTip is a popup in its own window that escapes that clip, a SwiftUI overlay
+/// would be cut off by it.
 @available(macOS 10.15, *)
 struct ArenaTooltipRegion: Equatable {
     let target: ArenaTooltipTarget
+    /// Canvas pixels, for `RootOverlayWindow` to sample the cursor against.
     let frame: CGRect
+    /// The same region in the helper's own reference space, to anchor the bubble.
+    let anchor: CGRect
+    let runs: [ArenaTooltipRun]
+    /// HDT's `ToolTipService.IsEnabled`. The region still reports itself when this
+    /// is false, because hovering it may do something other than show a tooltip.
+    let isEnabled: Bool
+}
+
+@available(macOS 10.15, *)
+extension CoordinateSpace {
+    /// Declared on `ArenaPickHelperView`'s root, so a region can report where it
+    /// sits in the 1440x1080 space the bubbles are laid out in.
+    static let arenaPickHelper = CoordinateSpace.named("arenaPickHelper")
 }
 
 @available(macOS 10.15, *)
@@ -141,36 +161,20 @@ struct ArenaTooltipBubble: View {
 private struct ArenaTooltipModifier: ViewModifier {
     let target: ArenaTooltipTarget
     let runs: [ArenaTooltipRun]
-    /// HDT's `ToolTipService.IsEnabled`: the region still reports itself when this
-    /// is false, because hovering it may do something other than show a tooltip.
     let isEnabled: Bool
-    let hovered: ArenaTooltipTarget?
 
     func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(
-                        key: ArenaTooltipRegionKey.self,
-                        value: [ArenaTooltipRegion(target: target,
-                                                   frame: proxy.frame(in: .rootOverlayCanvas))])
-                }
-            )
-            .overlay(bubble, alignment: .top)
-    }
-
-    /// HDT places these `Top` with a 5pt vertical offset. The zero-height marker
-    /// lets the bubble grow upward without this view knowing its height.
-    @ViewBuilder
-    private var bubble: some View {
-        if isEnabled, hovered == target, !runs.isEmpty {
-            Color.clear
-                .frame(height: 0)
-                .overlay(ArenaTooltipBubble(runs: runs), alignment: .bottom)
-                .offset(y: -5)
-                .allowsHitTesting(false)
-                .fixedSize()
-        }
+        content.background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ArenaTooltipRegionKey.self,
+                    value: [ArenaTooltipRegion(target: target,
+                                               frame: proxy.frame(in: .rootOverlayCanvas),
+                                               anchor: proxy.frame(in: .arenaPickHelper),
+                                               runs: runs,
+                                               isEnabled: isEnabled)])
+            }
+        )
     }
 }
 
@@ -178,9 +182,7 @@ private struct ArenaTooltipModifier: ViewModifier {
 extension View {
     func arenaOverlayTooltip(_ target: ArenaTooltipTarget,
                              runs: [ArenaTooltipRun],
-                             isEnabled: Bool,
-                             hovered: ArenaTooltipTarget?) -> some View {
-        modifier(ArenaTooltipModifier(target: target, runs: runs,
-                                      isEnabled: isEnabled, hovered: hovered))
+                             isEnabled: Bool) -> some View {
+        modifier(ArenaTooltipModifier(target: target, runs: runs, isEnabled: isEnabled))
     }
 }
