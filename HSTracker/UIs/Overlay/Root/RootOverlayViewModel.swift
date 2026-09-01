@@ -66,4 +66,7 @@ class RootOverlayViewModel: ObservableObject {
     // that one is wired straight to the Battlegrounds filter button, and the two
     // are driven by different children with different consumers.
     @Published var arenaBottomPanelFrame: CGRect?
+
+    // The bottom panel's direction funnel, in canvas pixels.
+    @Published var arenaDirectionTriggerShape = [CGPoint]()
 }

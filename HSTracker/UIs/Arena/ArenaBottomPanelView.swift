@@ -30,8 +30,15 @@ struct ArenaBottomPanelView: View {
                     .padding(.bottom, Self.bottomInset)
                     .background(
                         GeometryReader { proxy in
-                            Color.clear.preference(key: ArenaBottomPanelHoverKey.self,
-                                                   value: proxy.frame(in: .rootOverlayCanvas))
+                            Color.clear
+                                .preference(key: ArenaBottomPanelHoverKey.self,
+                                            value: proxy.frame(in: .rootOverlayCanvas))
+                                // HDT marks this panel IsOverlayHitTestVisible while
+                                // ShowBottom is true, so the card list can actually be
+                                // scrolled. Without it the overlay stays click-through
+                                // here and any row past the first is unreachable.
+                                .preference(key: InteractiveRegionPreferenceKey.self,
+                                            value: [proxy.frame(in: .rootOverlayCanvas)])
                         }
                     )
                     .transition(.opacity)
@@ -154,6 +161,18 @@ struct ArenaBottomPanelView: View {
 /// Frame of the bottom panel, so `RootOverlayWindow` can tell when the cursor is
 /// over it. Separate from `HoverRegionPreferenceKey`, which is wired straight to
 /// the Battlegrounds minion browser's filter button.
+/// The direction funnel, in canvas pixels. A polygon, so unlike the panel's own
+/// frame it cannot be expressed as a rect - a bounding box here would keep the
+/// panel open for any sideways movement, which is exactly what it must not do.
+@available(macOS 10.15, *)
+struct ArenaDirectionTriggerKey: PreferenceKey {
+    static var defaultValue: [CGPoint] = []
+    static func reduce(value: inout [CGPoint], nextValue: () -> [CGPoint]) {
+        let next = nextValue()
+        if !next.isEmpty { value = next }
+    }
+}
+
 @available(macOS 10.15, *)
 struct ArenaBottomPanelHoverKey: PreferenceKey {
     static var defaultValue: CGRect?

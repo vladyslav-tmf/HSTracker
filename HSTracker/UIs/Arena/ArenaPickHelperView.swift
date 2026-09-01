@@ -17,6 +17,8 @@ struct ArenaPickHelperView: View {
     @ObservedObject var viewModel: ArenaPickHelperViewModel
     /// Reported upward so the window can match the cursor against it.
     @Binding var bottomPanelFrame: CGRect?
+    /// Likewise for the direction funnel, as a polygon rather than a rect.
+    @Binding var directionTriggerShape: [CGPoint]
 
     // HDT's outer grid: 3.25* for the pick area, 1* for the deck rail.
     private static let referenceWidth: CGFloat = 1440
@@ -43,13 +45,16 @@ struct ArenaPickHelperView: View {
                 HStack(spacing: 0) {
                     ZStack {
                         optionsArea
+                            .allowsHitTesting(false)
                         // HDT puts the bottom panel in the same column as the
-                        // options, inset 60pt either side and 99pt up.
+                        // options, inset 60pt either side and 99pt up. It is the
+                        // one part of the helper that takes mouse input.
                         ArenaBottomPanelView(viewModel: viewModel)
                     }
                     .frame(width: optionsWidth)
                     deckRail
                         .frame(width: railWidth)
+                        .allowsHitTesting(false)
                 }
                 .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
                 .transition(transition)
@@ -57,12 +62,24 @@ struct ArenaPickHelperView: View {
         }
         .frame(width: Self.referenceWidth, height: Self.referenceHeight, alignment: .topLeading)
         .animation(.easeOut(duration: 0.3), value: viewModel.isVisible)
-        // Nothing in the pick helper takes clicks; the bottom panel only needs to
-        // know when the pointer is over it, which RootOverlayWindow reports
-        // without giving up click-through.
-        .allowsHitTesting(false)
+        // The funnel, mapped from this view's reference space into canvas pixels
+        // so RootOverlayWindow can hit-test the cursor against it. Reported as an
+        // empty shape when disabled, which is how it stops being re-enterable.
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ArenaDirectionTriggerKey.self,
+                    value: directionTriggerPoints(in: proxy))
+            }
+        )
+        // Hit testing is disabled per-subtree above rather than here: the bottom
+        // panel's card list has to receive scroll events, and a disabled ancestor
+        // cannot be re-enabled by a descendant.
         .onPreferenceChange(ArenaBottomPanelHoverKey.self) { rect in
             bottomPanelFrame = rect
+        }
+        .onPreferenceChange(ArenaDirectionTriggerKey.self) { points in
+            directionTriggerShape = points
         }
     }
 
@@ -115,6 +132,16 @@ struct ArenaPickHelperView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func directionTriggerPoints(in proxy: GeometryProxy) -> [CGPoint] {
+        guard viewModel.enableBottomDirectionTrigger, viewModel.showBottom else { return [] }
+        let frame = proxy.frame(in: .rootOverlayCanvas)
+        guard frame.width > 0 else { return [] }
+        let scale = frame.width / Self.referenceWidth
+        return viewModel.bottomPanelDirectionShape.map {
+            CGPoint(x: frame.minX + $0.x * scale, y: frame.minY + $0.y * scale)
         }
     }
 

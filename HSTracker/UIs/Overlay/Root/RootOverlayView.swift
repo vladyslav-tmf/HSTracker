@@ -146,7 +146,8 @@ struct RootOverlayView: View {
                     ZStack(alignment: .topLeading) {
                         Color.clear
                         ArenaPickHelperView(viewModel: viewModel.arenaPickHelper,
-                                            bottomPanelFrame: $viewModel.arenaBottomPanelFrame)
+                                            bottomPanelFrame: $viewModel.arenaBottomPanelFrame,
+                                            directionTriggerShape: $viewModel.arenaDirectionTriggerShape)
                             .padding(.leading, fourThreeInset)
                     }
                     .frame(width: canvasWidth, height: 1080)

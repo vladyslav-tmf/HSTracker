@@ -87,6 +87,7 @@ class RootOverlayWindow: OverWindowController {
 
         updateFilterRegionHover(at: viewPoint)
         updateArenaPanelHover(at: viewPoint)
+        updateArenaDirectionTrigger(at: viewPoint)
 
         guard !viewModel.interactiveRegions.isEmpty else {
             setIgnoresMouseEvents(true)
@@ -124,12 +125,84 @@ class RootOverlayWindow: OverWindowController {
     // is on the panel itself so it can be read and scrolled. Tracked here rather
     // than with .onHover for the same reason as the filter region above: the
     // panel stays click-through, so .onHover would never fire.
+    private var _arenaDirectionWatcher: Any?
+    private var arenaDirectionInside = false
+    private var arenaDirectionArmPending = false
+
     private func updateArenaPanelHover(at viewPoint: NSPoint) {
         guard #available(macOS 10.15, *) else { return }
         let hovering = viewModel.arenaBottomPanelFrame?.contains(viewPoint) ?? false
         let pickHelper = viewModel.arenaPickHelper
         guard pickHelper.hoveringPanel != hovering else { return }
         pickHelper.hoveringPanel = hovering
+    }
+
+    // HDT's BottomDirectionTrigger: a trapezoid funnel from the hovered choice
+    // down to the bottom panel, which keeps the panel open while the cursor is on
+    // its way there. Without it the panel closes the instant the in-game hover
+    // ends and can never be reached.
+    //
+    // WPF gets enter/leave events; here the cursor is sampled, so the previous
+    // inside/outside state is tracked to derive the same edges - otherwise the
+    // watcher's timeout would immediately re-arm while the cursor sat still
+    // inside the shape.
+    private var arenaDirectionWatcher: ArenaMouseDirectionWatcher {
+        if let existing = _arenaDirectionWatcher as? ArenaMouseDirectionWatcher { return existing }
+        let watcher = ArenaMouseDirectionWatcher()
+        watcher.onTimeout = { [weak self] in self?.endArenaDirectionTrigger() }
+        watcher.onDirectionChange = { [weak self] direction in
+            // Heading back up is heading away from the panel.
+            if direction.contains(.up) { self?.endArenaDirectionTrigger() }
+        }
+        _arenaDirectionWatcher = watcher
+        return watcher
+    }
+
+    @available(macOS 10.15, *)
+    private func endArenaDirectionTrigger() {
+        arenaDirectionWatcher.stop()
+        arenaDirectionArmPending = false
+        viewModel.arenaPickHelper.hoveringBottomDirectionTrigger = false
+    }
+
+    private func updateArenaDirectionTrigger(at viewPoint: NSPoint) {
+        guard #available(macOS 10.15, *) else { return }
+        let pickHelper = viewModel.arenaPickHelper
+        let shape = viewModel.arenaDirectionTriggerShape
+        let inside = !shape.isEmpty && Self.polygon(shape, contains: viewPoint)
+
+        if inside && !arenaDirectionInside {
+            pickHelper.hoveringBottomDirectionTrigger = true
+            arenaDirectionWatcher.stop()
+            // The funnel overlaps the choice itself, so the watcher only starts
+            // once the in-game hover has ended - otherwise it would time out
+            // while the cursor was still sitting on the card.
+            arenaDirectionArmPending = true
+        } else if !inside && arenaDirectionInside {
+            endArenaDirectionTrigger()
+        }
+        arenaDirectionInside = inside
+
+        if inside, arenaDirectionArmPending, pickHelper.hoveredChoice == nil {
+            arenaDirectionArmPending = false
+            arenaDirectionWatcher.start()
+        }
+    }
+
+    /// Ray casting - the shape is a trapezoid, so a bounding box would not do.
+    private static func polygon(_ points: [CGPoint], contains point: NSPoint) -> Bool {
+        guard points.count > 2 else { return false }
+        var inside = false
+        var j = points.count - 1
+        for i in 0..<points.count {
+            let a = points[i], b = points[j]
+            if (a.y > point.y) != (b.y > point.y),
+               point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x {
+                inside.toggle()
+            }
+            j = i
+        }
+        return inside
     }
 
     private func setIgnoresMouseEvents(_ ignores: Bool) {

@@ -89,6 +89,19 @@ final class ArenaPickHelperViewModel: ObservableObject {
     @Published private(set) var hoveredChoice: ArenaDraftChoice?
     /// Cursor is over the bottom panel. Set by RootOverlayWindow, which tracks
     /// the pointer even while the overlay is click-through.
+    /// Cursor is inside the funnel between the hovered choice and the panel.
+    /// Set by RootOverlayWindow; HDT's `HoveringBottomDirectionTrigger`.
+    @Published var hoveringBottomDirectionTrigger = false {
+        didSet {
+            guard hoveringBottomDirectionTrigger != oldValue else { return }
+            updateTileViewModels()
+        }
+    }
+    /// The funnel itself, in this view's 1440x1080 reference space - HDT's
+    /// `BottomPanelDirectionShape`, a trapezoid from the hovered choice down to
+    /// the panel. Retained after the hover ends, as HDT retains it.
+    @Published private(set) var bottomPanelDirectionShape = [CGPoint]()
+
     @Published var hoveringPanel = false {
         didSet {
             guard hoveringPanel != oldValue else { return }
@@ -145,12 +158,21 @@ final class ArenaPickHelperViewModel: ObservableObject {
     /// one is present.
     var bottomPanelColumnCount: Int { showMessages ? 4 : 6 }
 
+    /// HDT's `EnableBottomDirectionTrigger`. The funnel only exists while a choice
+    /// is hovered or the cursor is already travelling down it, so it cannot be
+    /// re-entered once it has timed out.
+    var enableBottomDirectionTrigger: Bool { hoveredChoice != nil || hoveringBottomDirectionTrigger }
+
     var showBottom: Bool {
         if isPackageSelectOpen || isAnimating || isHeroZoomed { return false }
         // The in-game hover is what opens the panel. Once it ends the panel stays
-        // only while the cursor is actually on it, so moving over to scroll the
-        // card list doesn't dismiss it.
-        if hoveredChoice == nil && (lastHoveredChoice == nil || !hoveringPanel) { return false }
+        // up while the cursor is heading down the funnel towards it, and then
+        // while it is actually on the panel - so moving over to read or scroll
+        // the card list doesn't dismiss it.
+        if hoveredChoice == nil
+            && (lastHoveredChoice == nil || (!hoveringBottomDirectionTrigger && !hoveringPanel)) {
+            return false
+        }
         return Settings.showArenaRelatedCards && (hasBottomPanelCards || showMessages)
     }
 
@@ -248,7 +270,8 @@ final class ArenaPickHelperViewModel: ObservableObject {
         // Falling back to the last hovered choice keeps the deck highlighting up
         // while the cursor is on the panel; without that guard the highlights
         // would persist after the player stops hovering anything.
-        let choice = hoveredChoice ?? (hoveringPanel ? lastHoveredChoice : nil)
+        let choice = hoveredChoice
+            ?? ((hoveringPanel || hoveringBottomDirectionTrigger) ? lastHoveredChoice : nil)
         let activeCard = choice.flatMap { cardStats?[safeIndex: $0.index] }?.cardStats
 
         let enhancedBy = activeCard?.related_cards?.enhanced_by_card_ids?.all ?? []
@@ -606,9 +629,26 @@ final class ArenaPickHelperViewModel: ObservableObject {
 
     // MARK: hover
 
+    private static func directionShape(forIndex index: Int) -> [CGPoint] {
+        let top: (CGFloat, CGFloat)
+        switch index {
+        case 0: top = (130, 385)
+        case 1: top = (410, 665)
+        default: top = (692, 947)
+        }
+        return [CGPoint(x: top.0, y: 225), CGPoint(x: top.1, y: 225),
+                CGPoint(x: 1017, y: 675), CGPoint(x: 60, y: 675)]
+    }
+
     private func updateHoveredChoice(_ choice: ArenaDraftChoice?) {
         hoveredChoice = choice
         updateTileViewModels()
+
+        if let choice {
+            // HDT's three hard-coded trapezoids, widening from the choice down to
+            // the panel so that moving towards it stays inside the shape.
+            bottomPanelDirectionShape = Self.directionShape(forIndex: choice.index)
+        }
 
         guard let choice, let card = Cards.any(byId: choice.cardId) else {
             return
