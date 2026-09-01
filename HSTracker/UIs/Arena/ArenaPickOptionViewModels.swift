@@ -240,7 +240,31 @@ final class ArenaPickSingleHeroOptionViewModel: ObservableObject {
     }
 
     /// Cards that define the class's winning decks, shown in the bottom panel.
+    ///
+    /// The API sends these as a JSON object keyed by card id, already in
+    /// descending score order - its own header reads "Highest Impact Cards". HDT
+    /// takes `Dictionary.Keys` and gets that order back, because C# happens to
+    /// enumerate a freshly deserialized dictionary in insertion order. Swift's
+    /// Dictionary gives no such guarantee, and its per-process hash seed
+    /// reshuffles the list on every launch.
+    ///
+    /// The order cannot simply be preserved instead: checked against a live
+    /// response, JSONDecoder's `allKeys` is hash-ordered too, so it is gone
+    /// before any of our code sees it. Sorting by the score reproduces the
+    /// server's list exactly, bar ties, which fall back to the card id so the
+    /// order is at least the same every launch.
     var classDeckSignatureCardIds: [String] {
-        data?.class_deck_signature?.data.keys.map { $0 } ?? []
+        guard let entries = data?.class_deck_signature?.data else { return [] }
+        // "Arenasmith" and "12+ PPC" are different scales - live responses carry
+        // the score in 12+ PPC with Arenasmith null throughout - so the field is
+        // chosen once for the whole list rather than per entry.
+        let useArenasmith = entries.values.contains { $0.arenasmith != nil }
+        func score(_ entry: DeckSignatureEntry) -> Double {
+            (useArenasmith ? entry.arenasmith : entry.ppc) ?? -.greatestFiniteMagnitude
+        }
+        return entries.sorted { lhs, rhs in
+            let left = score(lhs.value), right = score(rhs.value)
+            return left == right ? lhs.key < rhs.key : left > right
+        }.map { $0.key }
     }
 }
