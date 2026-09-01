@@ -78,8 +78,18 @@ final class ArenaPreDraftViewModel: ObservableObject {
 
     // MARK: visibility
 
+    /// Port of HDT's `UpdateArenaPreLobbyVisibility`, whose scene test is the
+    /// part that matters: `draftState` is only ever assigned while the arena
+    /// state watcher is running, so it keeps its last value after the player
+    /// leaves the draft screen. Without the scene check a stale `.preDraft` put
+    /// this panel on top of Battlegrounds and everything else.
+    ///
+    /// HDT also tests IsRunning / IsInMenu / !IsInQueue; those are implied by
+    /// being on the draft scene, so they are not repeated here.
     var isShown: Bool {
-        Settings.showArenasmithPreLobby && !isGameCriticalUiOpen
+        Settings.enableArenasmithOverlay && Settings.showArenasmithPreLobby
+            && SceneHandler.scene == .draft
+            && !isGameCriticalUiOpen
             && (draftState == .preDraft || draftState == .midDraft)
     }
 
@@ -196,6 +206,11 @@ final class ArenaPreDraftViewModel: ObservableObject {
     }
 
     func reset() {
+        // Not in HDT's Reset(), which can leave DraftState alone because its
+        // visibility is recomputed from the scene on every transition. Clearing
+        // it here keeps the published state honest once the draft is over, and
+        // is what re-renders the panel away.
+        draftState = .other
         ArenasmithStatusManager.instance.clear()
         availabilities = nil
         userState = .loading
