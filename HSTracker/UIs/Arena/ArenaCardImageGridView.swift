@@ -60,10 +60,18 @@ struct ArenaCardImageGridView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
                 HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.offset) { _, card in
+                    ForEach(Array(row.enumerated()), id: \.offset) { columnIndex, card in
                         ArenaCardImageView(cardId: card.id)
+                            // Identity has to change with the *card*, not just
+                            // with the slot. The ForEach keys on position, so
+                            // moving between two heroes hands slot N a new card
+                            // id while keeping the same view - and its @State
+                            // image, which is the previous card's art. The
+                            // position stays in the id because a related-cards
+                            // set can legitimately list the same card twice.
+                            .id("\(rowIndex).\(columnIndex).\(card.id)")
                             .frame(width: Self.cardWidth, height: Self.cardHeight)
                             .padding(.horizontal, Self.marginX)
                             .padding(.vertical, Self.marginY)
@@ -86,6 +94,13 @@ struct ArenaCardImageView: View {
 
     @SwiftUI.State private var image: NSImage?
 
+    init(cardId: String) {
+        self.cardId = cardId
+        // Seeded from the cache so an already-downloaded card draws on the first
+        // frame instead of blanking until onAppear runs.
+        _image = SwiftUI.State(initialValue: ImageUtils.cachedCardArt(cardId: cardId))
+    }
+
     var body: some View {
         Group {
             if let image {
@@ -99,10 +114,9 @@ struct ArenaCardImageView: View {
                 Color.clear
             }
         }
-        // Keyed on the card id: .onAppear fires once per view identity, and these
-        // views are recycled across hovers, so without this a second card would
-        // keep the first one's art.
-        .id(cardId)
+        // The identity that matters is applied by the grid above: .id() here
+        // would only re-identify this Group, leaving the enclosing view's @State
+        // - and so the previous card's art - untouched.
         .onAppear(perform: load)
     }
 
