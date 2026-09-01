@@ -161,7 +161,8 @@ struct ArenaPickSingleCardOptionView: View {
                                  dimmed: !viewModel.hasRelatedCards) {
                     ArenaCardGlyph()
                         .fill(viewModel.badgeForegroundColor)
-                        .frame(width: 15, height: 21)
+                        .frame(width: ArenaCardGlyph.width, height: ArenaCardGlyph.height)
+                        .shadow(color: .black.opacity(0.4), radius: 4)
                 }
             }
             if viewModel.showSynergy {
@@ -171,7 +172,8 @@ struct ArenaPickSingleCardOptionView: View {
                                  dimmed: false) {
                     ArenaBoostGlyph()
                         .fill(viewModel.badgeForegroundColor)
-                        .frame(width: 19, height: 20)
+                        .frame(width: ArenaBoostGlyph.width, height: ArenaBoostGlyph.height)
+                        .shadow(color: .black.opacity(0.4), radius: 4)
                 }
             }
             if let caution = viewModel.cautionImageName, let image = NSImage(named: caution) {
@@ -255,46 +257,5 @@ struct ArenaPickSingleHeroOptionView: View {
                 .font(.system(size: 14, weight: .bold))
         }
         .fixedSize()
-    }
-}
-
-// MARK: - glyphs
-
-/// The "has related cards" mark: HDT draws a card outline (its `CardIcon`
-/// DrawingImage). Drawn as a path rather than an SF Symbol so it renders on the
-/// 10.14 deployment target, where `Image(systemName:)` is unavailable.
-@available(macOS 10.15, *)
-struct ArenaCardGlyph: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path(roundedRect: rect, cornerRadius: rect.width * 0.16)
-    }
-}
-
-/// The synergy mark: HDT's `BoostIcon`, a pair of stacked up-arrows.
-@available(macOS 10.15, *)
-struct ArenaBoostGlyph: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        // Two arrows, the trailing one raised, as in the original 40x42 geometry.
-        for (index, offset) in [(0, CGPoint(x: 0, y: rect.height * 0.14)),
-                                (1, CGPoint(x: rect.width * 0.45, y: 0))] {
-            _ = index
-            let w = rect.width * 0.55
-            let h = rect.height * 0.86
-            let originX = rect.minX + offset.x
-            let originY = rect.minY + offset.y
-            let headHeight = h * 0.42
-            let shaftWidth = w * 0.34
-
-            path.move(to: CGPoint(x: originX + w / 2, y: originY))
-            path.addLine(to: CGPoint(x: originX + w, y: originY + headHeight))
-            path.addLine(to: CGPoint(x: originX + w / 2 + shaftWidth / 2, y: originY + headHeight))
-            path.addLine(to: CGPoint(x: originX + w / 2 + shaftWidth / 2, y: originY + h))
-            path.addLine(to: CGPoint(x: originX + w / 2 - shaftWidth / 2, y: originY + h))
-            path.addLine(to: CGPoint(x: originX + w / 2 - shaftWidth / 2, y: originY + headHeight))
-            path.addLine(to: CGPoint(x: originX, y: originY + headHeight))
-            path.closeSubpath()
-        }
-        return path
     }
 }
