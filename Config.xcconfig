@@ -10,9 +10,9 @@
 // https://help.apple.com/xcode/#/dev745c5c974
 
 // Release identity for code signing
-CODE_SIGN_IDENTITY = Developer ID Application
-DEVELOPMENT_TEAM = RL7C49LAMC
+//CODE_SIGN_IDENTITY = Developer ID Application
+//DEVELOPMENT_TEAM = RL7C49LAMC
 
 // Debug identity for local running
-//CODE_SIGN_IDENTITY = -
-//DEVELOPMENT_TEAM =
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
